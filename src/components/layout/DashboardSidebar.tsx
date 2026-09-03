@@ -144,7 +144,7 @@ export default function DashboardSidebar() {
   const collapsed = state === "collapsed";
   const user = useSelector((state: RootState) => state.user.userData);
   const role: UserRole = user?.role ?? "student";
-  const groups = navByRole[role];
+  const items = navByRole[role].flatMap((group) => group.items);
 
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border bg-white">
@@ -159,20 +159,13 @@ export default function DashboardSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="custom-scrollbar">
-        {groups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <MenuLink item={item} />
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        <SidebarMenu>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <MenuLink item={item} />
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
 
       <SidebarFooter className="p-3">
