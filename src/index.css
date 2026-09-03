@@ -1,0 +1,122 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 336 22% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 336 22% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 336 22% 16%;
+
+    /* #E21B70 */
+    --primary: 334 79% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 334 45% 97%;
+    --secondary-foreground: 334 40% 28%;
+
+    --muted: 330 20% 96%;
+    --muted-foreground: 330 10% 42%;
+
+    --accent: 334 79% 96%;
+    --accent-foreground: 334 79% 40%;
+
+    --destructive: 0 74% 54%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 334 20% 90%;
+    --input: 334 20% 90%;
+    --ring: 334 79% 50%;
+
+    --radius: 0.85rem;
+
+    --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+      "Apple Color Emoji", "Segoe UI Emoji";
+
+    --gradient-app: radial-gradient(900px 520px at 8% 0%, hsl(334 79% 96% / 0.9), transparent 55%),
+      radial-gradient(800px 480px at 100% 10%, hsl(334 70% 97% / 0.8), transparent 50%),
+      linear-gradient(180deg, hsl(0 0% 100%), hsl(334 40% 98%));
+    --gradient-brand: linear-gradient(135deg, #e21b70, #c11660);
+    --shadow-elev: 0 18px 40px -28px hsl(334 79% 40% / 0.35);
+    --shadow-glow: 0 0 0 1px hsl(334 30% 90% / 0.8), 0 16px 40px -28px hsl(334 79% 50% / 0.22);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 336 22% 16%;
+    --sidebar-primary: 334 79% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 334 79% 96%;
+    --sidebar-accent-foreground: 334 79% 36%;
+    --sidebar-border: 334 20% 92%;
+    --sidebar-ring: 334 79% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  .bg-app {
+    background-image: var(--gradient-app);
+  }
+
+  .bg-brand-gradient {
+    background-image: var(--gradient-brand);
+  }
+
+  .surface-card {
+    box-shadow: var(--shadow-glow);
+    background-color: hsl(var(--card));
+  }
+
+  .shadow-elev {
+    box-shadow: var(--shadow-elev);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+
+  .text-gradient-brand {
+    background: linear-gradient(90deg, #e21b70, #f25a96);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  [data-sidebar="menu-button"].bg-sidebar-accent {
+    border-left: 2px solid #e21b70;
+  }
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
