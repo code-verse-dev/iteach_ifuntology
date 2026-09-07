@@ -1,4 +1,11 @@
-export const getBasename = () => "";
+export const getBasename = () => {
+  const { hostname } = window.location;
+  let basename = "";
+  if (hostname.includes("react.customdev.solutions")) {
+    basename = "/iteach_ifuntology/";
+  }
+  return basename;
+};
 
 export const ImageUrl = (image: string) => {
   const name = image.replace(/^\/+/, "");
