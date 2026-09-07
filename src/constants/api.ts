@@ -1,8 +1,8 @@
 const { hostname } = window.location;
 
 const servers = {
-  local: "http://localhost:3034",
-  customDev: "https://react.customdev.solutions:3034",
+  local: "http://localhost:3038",
+  customDev: "https://react.customdev.solutions:3038",
   live: "https://api.iteach-ifuntology.com",
 };
 
