@@ -73,10 +73,11 @@ export default function CareerExplorerPathwayPage() {
   const { courseId } = useParams();
   const user = useSelector((state: RootState) => state.user.userData);
   const role = user?.role as string;
+  const decodedCourse = decodeURIComponent(courseId ?? "");
   const courseBase = role === "student" ? "/student/learning" : "/teacher/my-courses";
-  const { data: courseData } = useGetCourseByIdQuery(courseId as string, { skip: !courseId });
+  const { data: courseData } = useGetCourseByIdQuery(decodedCourse, { skip: !decodedCourse });
   const course = courseData?.data;
-  const courseKey = course?.slug ?? courseId;
+  const courseKey = course?.courseType ?? course?.slug ?? decodedCourse;
   const coursePdfName = getCoursePdfName(courseKey);
   const courseTitle = course?.title ?? coursePdfName;
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
@@ -85,7 +86,7 @@ export default function CareerExplorerPathwayPage() {
     <AppPage>
       <div className="mb-6">
         <Button variant="outline" size="sm" asChild>
-          <Link to={`${courseBase}/${courseId}`}>Back to {courseTitle}</Link>
+          <Link to={`${courseBase}/${encodeURIComponent(courseKey)}`}>Back to {courseTitle}</Link>
         </Button>
       </div>
 

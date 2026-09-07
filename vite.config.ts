@@ -10,9 +10,9 @@ export default defineConfig({
       overlay: false,
     },
     proxy: {
-      "/api": { target: "http://localhost:3030", changeOrigin: true },
-      "/Uploads": { target: "http://localhost:3030", changeOrigin: true },
-      "/uploads": { target: "http://localhost:3030", changeOrigin: true },
+      "/api": { target: "http://localhost:3034", changeOrigin: true },
+      "/Uploads": { target: "http://localhost:3034", changeOrigin: true },
+      "/uploads": { target: "http://localhost:3034", changeOrigin: true },
     },
   },
   plugins: [react()],

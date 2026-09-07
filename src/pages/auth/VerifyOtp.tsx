@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVerifyOtpMutation } from "@/redux/services/apiSlices/authSlice";
+import { UserRole } from "@/constants/roles";
 
 export default function VerifyOtp() {
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email;
+  const type: UserRole | undefined = location.state?.type;
   const [code, setCode] = useState("");
   const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
 
@@ -20,8 +22,8 @@ export default function VerifyOtp() {
   }, []);
 
   useEffect(() => {
-    if (!email) navigate("/forgot-password", { replace: true });
-  }, [email, navigate]);
+    if (!email || !type) navigate("/forgot-password", { replace: true });
+  }, [email, type, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +31,7 @@ export default function VerifyOtp() {
       const res: any = await verifyOtp({ email, code }).unwrap();
       if (res?.status) {
         toast.success("Verification successful");
-        navigate("/recover-password", { state: { email, code } });
+        navigate("/recover-password", { state: { email, code, type } });
       } else {
         toast.error(res?.message || "Something went wrong");
       }
@@ -45,12 +47,20 @@ export default function VerifyOtp() {
           <BrandLogo size="medium" withWordmark />
           <h1 className="mt-6 text-3xl font-bold">Check your email</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter the 6-digit code sent to {email}. Demo code is 123456.
+            Enter the 4-digit code sent to {email}.
           </p>
           <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="code">Verification code</Label>
-              <Input id="code" className="h-11 rounded-full tracking-[0.4em]" value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} required />
+              <Input
+                id="code"
+                className="h-11 rounded-full tracking-[0.4em] text-center"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                inputMode="numeric"
+                maxLength={4}
+                required
+              />
             </div>
             <Button type="submit" className="h-11 w-full rounded-full" disabled={isLoading}>
               {isLoading ? "Verifying..." : "Verify code"}

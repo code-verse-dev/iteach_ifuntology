@@ -13,6 +13,7 @@ import { useLoginMutation } from "@/redux/services/apiSlices/authSlice";
 import { addUser } from "@/redux/services/Slices/userSlice";
 import { ROLE_HOME, UserRole } from "@/constants/roles";
 import { cn } from "@/lib/utils";
+import { setAccessTokenCookie } from "@/utils/authSession";
 
 const features = [
   { label: "Lifetime course access", icon: BookOpen },
@@ -44,9 +45,12 @@ export default function LoginPage() {
     try {
       const res: any = await login({ identifier: email, password, role }).unwrap();
       if (res?.status) {
+        const accessToken = res?.data?.accessToken;
+        const loggedInUser = res?.data?.user;
+        setAccessTokenCookie(accessToken);
         toast.success("Signed in successfully");
-        dispatch(addUser({ user: res?.data?.user, token: res?.data?.token }));
-        navigate(ROLE_HOME[role] ?? "/login");
+        dispatch(addUser({ user: loggedInUser, token: accessToken }));
+        navigate(ROLE_HOME[loggedInUser?.role ?? role] ?? "/login");
       } else {
         toast.error(res?.message || "Something went wrong");
       }
@@ -117,7 +121,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">{role === "student" ? "Email or Username" : "Email Address"}</Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -125,7 +129,7 @@ export default function LoginPage() {
                   className="h-11 rounded-full pl-10"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@iteach.org"
+                  placeholder={role === "student" ? "you@iteach.org or username" : "you@iteach.org"}
                   required
                 />
               </div>
@@ -133,7 +137,11 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link to="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
+                <Link
+                  to="/forgot-password"
+                  state={{ role }}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
                   Forgot password?
                 </Link>
               </div>

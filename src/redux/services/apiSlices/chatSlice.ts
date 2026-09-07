@@ -1,34 +1,65 @@
-import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react";
-import { threads } from "@/mock/data";
-import { appendMessage, delay, listMessages, ok } from "@/mock/store";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { rawBaseQuery } from "@/redux/reauth/baseQueryWithReauth";
 
 export const chatSlice = createApi({
   reducerPath: "chatSlice",
-  baseQuery: fakeBaseQuery(),
-  tagTypes: ["Chat"],
+  baseQuery: rawBaseQuery,
+  tagTypes: ["Chats", "Messages"],
   endpoints: (builder) => ({
-    getThreads: builder.query({
-      async queryFn() {
-        await delay();
-        return { data: ok(threads) };
-      },
-      providesTags: ["Chat"],
+    getChats: builder.query<any, { keyword?: string } | void>({
+      query: (params) => ({
+        url: "/chat",
+        method: "GET",
+        params: {
+          page: 1,
+          limit: 100,
+          ...(params?.keyword ? { keyword: params.keyword } : {}),
+        },
+      }),
+      transformResponse: (response: any) => ({
+        status: response?.status,
+        message: response?.message,
+        data: response?.data?.docs ?? [],
+      }),
+      providesTags: ["Chats"],
     }),
-    getMessages: builder.query({
-      async queryFn(threadId: string) {
-        await delay(120);
-        return { data: ok(listMessages(threadId)) };
-      },
-      providesTags: ["Chat"],
+    createChat: builder.mutation<any, { sender: string; receiver: string }>({
+      query: (body) => ({
+        url: "/chat",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Chats"],
     }),
-    sendMessage: builder.mutation({
-      async queryFn(body: { threadId: string; text: string }) {
-        await delay(120);
-        return { data: ok(appendMessage(body.threadId, body.text)) };
-      },
-      invalidatesTags: ["Chat"],
+    getMessages: builder.query<any, string>({
+      query: (chatId) => ({
+        url: `/message/${chatId}`,
+        method: "GET",
+        params: { page: 1, limit: 100 },
+      }),
+      transformResponse: (response: any) => ({
+        status: response?.status,
+        message: response?.message,
+        data: Array.isArray(response?.data)
+          ? response.data
+          : response?.data?.docs ?? [],
+      }),
+      providesTags: (_result, _error, chatId) => [{ type: "Messages", id: chatId }],
+    }),
+    sendMessage: builder.mutation<any, { chatId: string; content: string }>({
+      query: (body) => ({
+        url: "/message",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Chats"],
     }),
   }),
 });
 
-export const { useGetThreadsQuery, useGetMessagesQuery, useSendMessageMutation } = chatSlice;
+export const {
+  useGetChatsQuery,
+  useCreateChatMutation,
+  useGetMessagesQuery,
+  useSendMessageMutation,
+} = chatSlice;

@@ -21,11 +21,18 @@ import {
   useGetTeachersQuery,
   useUpdateTeacherPasswordMutation,
 } from "@/redux/services/apiSlices/teacherSlice";
-import { courses } from "@/mock/data";
+import {
+  getPasswordValidationError,
+  PASSWORD_POLICY_HINT,
+} from "@/utils/passwordValidation";
 
 export default function TeachersPage() {
-  const { data } = useGetTeachersQuery();
+  const [page, setPage] = useState(1);
+  const [keyword, setKeyword] = useState("");
+  const [search, setSearch] = useState("");
+  const { data, isFetching } = useGetTeachersQuery({ page, limit: 20, keyword });
   const teachers = data?.data ?? [];
+  const meta = data?.meta ?? { page: 1, totalPages: 1, totalDocs: 0 };
   const [createTeacher, { isLoading: creating }] = useCreateTeacherMutation();
   const [updatePassword] = useUpdateTeacherPasswordMutation();
   const [open, setOpen] = useState(false);
@@ -48,20 +55,43 @@ export default function TeachersPage() {
   const [form, setForm] = useState(emptyForm);
   const [newPassword, setNewPassword] = useState("");
 
-  const courseTitle = useMemo(() => Object.fromEntries(courses.map((c) => [c._id, c.title])), []);
+  const applySearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setKeyword(search.trim());
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const passwordError = getPasswordValidationError(form.password);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
     try {
-      const res: any = await createTeacher(form).unwrap();
+      const res: any = await createTeacher({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+        phoneNumber: form.phone,
+        organization: form.organization,
+        country: form.country,
+        state: form.state,
+        city: form.city,
+        streetAddress: form.streetAddress,
+        zipCode: form.zipCode,
+      }).unwrap();
       if (res?.status) {
         toast.success("Teacher created");
         setOpen(false);
         setForm(emptyForm);
+      } else {
+        toast.error(res?.message || "Could not create teacher");
       }
     } catch (err: any) {
       toast.error(err?.data?.message || "Could not create teacher");
@@ -69,17 +99,29 @@ export default function TeachersPage() {
   };
 
   const savePassword = async () => {
+    const passwordError = getPasswordValidationError(newPassword);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
     try {
       const res: any = await updatePassword({ id: passwordOpen._id, password: newPassword }).unwrap();
       if (res?.status) {
         toast.success("Password updated");
         setPasswordOpen(null);
         setNewPassword("");
+      } else {
+        toast.error(res?.message || "Could not update password");
       }
     } catch (err: any) {
       toast.error(err?.data?.message || "Could not update password");
     }
   };
+
+  const pageLabel = useMemo(
+    () => `Page ${meta.page} of ${meta.totalPages || 1}`,
+    [meta.page, meta.totalPages],
+  );
 
   return (
     <AppPage>
@@ -89,6 +131,17 @@ export default function TeachersPage() {
         description="Admin-created accounts only. Assign lifetime courses and student seats, then update them later."
         actions={<Button onClick={() => setOpen(true)}>Create teacher</Button>}
       />
+      <form className="mb-4 flex flex-wrap items-center gap-2" onSubmit={applySearch}>
+        <Input
+          className="max-w-sm"
+          placeholder="Search name or email"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button type="submit" variant="outline" disabled={isFetching}>
+          {isFetching ? "Searching..." : "Search"}
+        </Button>
+      </form>
       <div className="surface-card overflow-hidden rounded-2xl border border-border/70">
         <table className="w-full text-sm">
           <thead className="bg-secondary/80 text-left text-muted-foreground">
@@ -101,8 +154,8 @@ export default function TeachersPage() {
           </thead>
           <tbody>
             {teachers.map((t: any) => {
-              const seats = (t.assignments ?? []).reduce((s: number, a: any) => s + a.seats, 0);
-              const used = (t.assignments ?? []).reduce((s: number, a: any) => s + a.usedSeats, 0);
+              const seats = (t.assignments ?? []).reduce((s: number, a: any) => s + (a.seats ?? 0), 0);
+              const used = (t.assignments ?? []).reduce((s: number, a: any) => s + (a.usedSeats ?? 0), 0);
               return (
                 <tr key={t._id} className="border-t border-border/70">
                   <td className="px-4 py-4">
@@ -113,7 +166,9 @@ export default function TeachersPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {(t.assignments ?? []).length === 0 && <span className="text-muted-foreground">None yet</span>}
                       {(t.assignments ?? []).map((a: any) => (
-                        <Badge key={a.courseId} variant="secondary">{courseTitle[a.courseId] ?? a.courseId}</Badge>
+                        <Badge key={`${t._id}-${a.courseType ?? a.courseId}`} variant="secondary">
+                          {a.courseType ?? a.courseId}
+                        </Badge>
                       ))}
                     </div>
                   </td>
@@ -133,8 +188,31 @@ export default function TeachersPage() {
                 </tr>
               );
             })}
+            {teachers.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                  {isFetching ? "Loading teachers..." : "No teachers found."}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+        <p>{meta.totalDocs} teacher{meta.totalDocs === 1 ? "" : "s"} · {pageLabel}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1 || isFetching} onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= (meta.totalPages || 1) || isFetching}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -159,12 +237,13 @@ export default function TeachersPage() {
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Phone number</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 000 0000" />
+                  <Label>Phone number *</Label>
+                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 000 0000" required />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Temporary password *</Label>
                   <PasswordField value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+                  <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_HINT}</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Confirm password *</Label>
@@ -185,8 +264,8 @@ export default function TeachersPage() {
                   <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>State</Label>
-                  <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                  <Label>State *</Label>
+                  <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} required />
                 </div>
                 <div className="space-y-1.5">
                   <Label>City *</Label>
@@ -217,6 +296,7 @@ export default function TeachersPage() {
             <DialogTitle>Update password for {passwordOpen?.firstName}</DialogTitle>
           </DialogHeader>
           <PasswordField value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_HINT}</p>
           <DialogFooter>
             <Button onClick={savePassword}>Save password</Button>
           </DialogFooter>

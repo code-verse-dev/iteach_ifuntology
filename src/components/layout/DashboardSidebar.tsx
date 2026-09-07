@@ -61,6 +61,7 @@ const navByRole: Record<UserRole, { label: string; items: Item[] }[]> = {
         { title: "LMS Management", url: "/admin/lms-management", icon: GraduationCap },
         { title: "Module Management", url: "/admin/module-management", icon: Library },
         { title: "Quiz Management", url: "/admin/quiz-management", icon: ListChecks },
+        { title: "Certificates", url: "/admin/certificates", icon: Award },
         { title: "Video Library", url: "/admin/video-library-management", icon: Video },
         { title: "Surveys", url: "/admin/surveys-evaluations", icon: FileText },
       ],

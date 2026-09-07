@@ -26,46 +26,59 @@ import {
 import { cn } from "@/lib/utils";
 import { useGetCourseByIdQuery, useGetModulesQuery } from "@/redux/services/apiSlices/courseSlice";
 import { useGetMyStudentsQuery } from "@/redux/services/apiSlices/studentSlice";
+import { useGetMyAssignmentsQuery } from "@/redux/services/apiSlices/teacherSlice";
 import { RootState } from "@/redux/store";
+import { courseRouteKey } from "@/utils/mediaUrl";
+import { isImportedAssessmentModule } from "@/constants/quiz";
 
 export default function CourseDetailsPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.user.userData);
   const role = user?.role as string;
-  const { data: courseData } = useGetCourseByIdQuery(courseId as string, { skip: !courseId });
-  const { data: moduleData } = useGetModulesQuery(courseId);
+  const decodedCourse = decodeURIComponent(courseId ?? "");
+  const { data: courseData, isFetching: loadingCourse } = useGetCourseByIdQuery(decodedCourse, { skip: !decodedCourse });
+  const { data: moduleData, isFetching: loadingModules } = useGetModulesQuery(
+    { courseType: decodedCourse, limit: 100 },
+    { skip: !decodedCourse },
+  );
+  const { data: assignmentData } = useGetMyAssignmentsQuery(undefined, { skip: role !== "teacher" });
   const { data: studentsData } = useGetMyStudentsQuery(user?._id, { skip: role !== "teacher" || !user?._id });
   const course = courseData?.data;
-  const modules = moduleData?.data ?? [];
+  const modules = (moduleData?.data ?? []).filter((mod: any) => !isImportedAssessmentModule(mod.title));
   const students = studentsData?.data ?? [];
+  const courseKey = courseRouteKey(course) || decodedCourse;
   const courseBase = role === "student" ? "/student/learning" : "/teacher/my-courses";
-  const usedSeats = (user?.assignments ?? []).find((a: any) => a.courseId === courseId)?.usedSeats ?? students.length;
+  const usedSeats =
+    (assignmentData?.data ?? []).find((assignment: any) => assignment.courseType === courseKey)?.usedSeats
+    ?? students.filter((student: any) =>
+      (student.enrollments ?? []).some((enrollment: any) => enrollment.courseType === courseKey),
+    ).length;
 
   const testingCenter = [
     {
       label: "Quizzes",
       icon: ClipboardList,
-      onClick: undefined as (() => void) | undefined,
+      onClick: () => navigate(`${courseBase}/${encodeURIComponent(courseKey)}/quizzes`),
       className: "border-orange-500/25 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20",
     },
     {
       label: "Tests",
       icon: FileQuestion,
-      onClick: undefined,
+      onClick: () => navigate(`${courseBase}/${encodeURIComponent(courseKey)}/tests`),
       className: "border-blue-500/25 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20",
     },
     {
       label: "Exams",
       icon: GraduationCap,
-      onClick: undefined,
+      onClick: () => navigate(`${courseBase}/${encodeURIComponent(courseKey)}/exams`),
       className: "border-amber-500/25 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20",
     },
     ...(role === "student"
       ? [{
           label: "Certificate",
           icon: Award,
-          onClick: () => navigate(`/student/learning/${courseId}/certificate`),
+          onClick: () => navigate(`/student/learning/${encodeURIComponent(courseKey)}/certificate`),
           className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20",
         }]
       : []),
@@ -81,7 +94,7 @@ export default function CourseDetailsPage() {
     <AppPage>
       <PageHeader
         eyebrow="Course"
-        title={course?.title ?? "Course"}
+        title={course?.title ?? (loadingCourse ? "Loading course..." : "Course")}
         description={course?.description}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -109,7 +122,7 @@ export default function CourseDetailsPage() {
                 Career Success Planner
               </a>
             </Button>
-            <Button variant="brand" onClick={() => navigate(`${courseBase}/${courseId}/career-explorer-pathway`)}>
+            <Button variant="brand" onClick={() => navigate(`${courseBase}/${encodeURIComponent(courseKey)}/career-explorer-pathway`)}>
               <Compass className="h-4 w-4" />
               Career Explorer Pathway
             </Button>
@@ -132,11 +145,12 @@ export default function CourseDetailsPage() {
             {modules.map((mod: any) => (
               <article key={mod._id} className="surface-card rounded-2xl border border-border/70 p-5">
                 <h3 className="font-semibold">{mod.title}</h3>
+                {mod.description && <p className="mt-1 text-sm text-muted-foreground">{mod.description}</p>}
                 <ul className="mt-3 space-y-2">
-                  {mod.lessons.map((lesson: any) => (
+                  {(mod.lessons ?? []).map((lesson: any) => (
                     <li key={lesson._id}>
                       <Link
-                        to={`${courseBase}/${courseId}/lesson/${mod._id}/${lesson._id}`}
+                        to={`${courseBase}/${encodeURIComponent(courseKey)}/lesson/${mod._id}/${lesson._id}`}
                         className="flex items-center justify-between rounded-xl bg-secondary/80 px-4 py-3 text-sm hover:bg-secondary"
                       >
                         <span>{lesson.title}</span>
@@ -144,9 +158,17 @@ export default function CourseDetailsPage() {
                       </Link>
                     </li>
                   ))}
+                  {(mod.lessons ?? []).length === 0 && (
+                    <li className="text-sm text-muted-foreground">No lessons in this module yet.</li>
+                  )}
                 </ul>
               </article>
             ))}
+            {modules.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                {loadingModules ? "Loading modules..." : "No modules have been published for this course yet."}
+              </p>
+            )}
           </div>
         </div>
 

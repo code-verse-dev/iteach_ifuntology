@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import AppPage, { PageHeader } from "@/components/layout/PageShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,32 +31,51 @@ import {
   useUpdateLessonMutation,
   useUpdateModuleMutation,
 } from "@/redux/services/apiSlices/courseSlice";
+import { formatDuration } from "@/utils/mediaUrl";
 
-const EMPTY_LESSON = { title: "", summary: "", type: "pdf", duration: "" };
+const EMPTY_LESSON = {
+  title: "",
+  description: "",
+  type: "PDF",
+  duration: "0",
+  order: "1",
+  allowPdfPreview: true,
+  allowPdfDownload: true,
+  file: undefined as File | undefined,
+};
+
+function apiError(err: any, fallback: string) {
+  const message = err?.data?.message;
+  if (Array.isArray(message)) return message[0] || fallback;
+  return message || fallback;
+}
 
 export default function ModuleDetailPage() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
-  const { data, refetch } = useGetModuleByIdQuery(moduleId as string, { skip: !moduleId });
+  const { data, isFetching } = useGetModuleByIdQuery(moduleId as string, { skip: !moduleId });
   const mod = data?.data;
   const [createLesson, { isLoading: creating }] = useCreateLessonMutation();
-  const [updateLesson] = useUpdateLessonMutation();
-  const [removeLesson] = useDeleteLessonMutation();
-  const [updateModule] = useUpdateModuleMutation();
-  const [deleteModule] = useDeleteModuleMutation();
+  const [updateLesson, { isLoading: updatingLesson }] = useUpdateLessonMutation();
+  const [removeLesson, { isLoading: deletingLesson }] = useDeleteLessonMutation();
+  const [updateModule, { isLoading: updatingModule }] = useUpdateModuleMutation();
+  const [deleteModule, { isLoading: deletingModule }] = useDeleteModuleMutation();
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState<any>(null);
   const [deleteOpen, setDeleteOpen] = useState<any>(null);
   const [editModuleOpen, setEditModuleOpen] = useState(false);
   const [deleteModuleOpen, setDeleteModuleOpen] = useState(false);
   const [lessonForm, setLessonForm] = useState(EMPTY_LESSON);
-  const [moduleForm, setModuleForm] = useState({ title: "", description: "", duration: "" });
+  const [moduleForm, setModuleForm] = useState({ title: "", description: "", duration: "0", order: "1" });
+
+  const nextOrder = String((mod?.lessons?.reduce((max: number, lesson: any) => Math.max(max, Number(lesson.order) || 0), 0) ?? 0) + 1);
 
   const openEditModule = () => {
     setModuleForm({
       title: mod?.title ?? "",
       description: mod?.description ?? "",
-      duration: mod?.duration ?? "",
+      duration: String(mod?.duration ?? 0),
+      order: String(mod?.order ?? 1),
     });
     setEditModuleOpen(true);
   };
@@ -63,17 +83,17 @@ export default function ModuleDetailPage() {
   return (
     <AppPage>
       <PageHeader
-        eyebrow="Module"
+        eyebrow={mod?.courseType || "Module"}
         title={mod?.title ?? "Module"}
         description={mod?.description || "Lesson materials, reading, and media for this unit."}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>
-              <Link to="/admin/module-management">All modules</Link>
+              <Link to={`/admin/module-management?course=${encodeURIComponent(mod?.courseType ?? "")}`}>All modules</Link>
             </Button>
             <Button variant="outline" onClick={openEditModule}><Pencil className="h-4 w-4" /> Edit module</Button>
             <Button variant="ghost" onClick={() => setDeleteModuleOpen(true)}><Trash2 className="h-4 w-4" /> Delete</Button>
-            <Button onClick={() => { setLessonForm(EMPTY_LESSON); setAddOpen(true); }}>
+            <Button onClick={() => { setLessonForm({ ...EMPTY_LESSON, order: nextOrder }); setAddOpen(true); }}>
               <Plus className="h-4 w-4" /> Add lesson
             </Button>
           </div>
@@ -83,20 +103,30 @@ export default function ModuleDetailPage() {
         {mod?.lessons?.map((lesson: any) => (
           <div key={lesson._id} className="surface-card rounded-2xl border border-border/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <Link to={`/admin/module-management/${moduleId}/lesson/${lesson._id}`} className="min-w-0 flex-1">
+              <Link
+                to={["QUIZ", "TEST", "EXAM"].includes(String(lesson.type).toUpperCase())
+                  ? `/admin/quiz-management/${lesson._id}`
+                  : `/admin/module-management/${moduleId}/lesson/${lesson._id}`}
+                className="min-w-0 flex-1"
+              >
                 <h2 className="font-semibold hover:text-primary">{lesson.title}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{lesson.summary}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{lesson.description || lesson.summary}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Order {lesson.order} · {formatDuration(lesson.duration) || "No duration"}
+                </p>
               </Link>
               <div className="flex items-center gap-2">
                 <Badge>{lesson.type}</Badge>
-                <Button variant="outline" size="sm" onClick={() => setEditOpen(lesson)}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button variant="outline" size="sm" onClick={() => setEditOpen({ ...lesson, file: undefined })}><Pencil className="h-3.5 w-3.5" /></Button>
                 <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(lesson)}><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           </div>
         ))}
         {mod?.lessons?.length === 0 && (
-          <p className="text-sm text-muted-foreground">No lessons yet. Add the first one for this module.</p>
+          <p className="text-sm text-muted-foreground">
+            {isFetching ? "Loading lessons..." : "No lessons yet. Add the first one for this module."}
+          </p>
         )}
       </div>
 
@@ -107,30 +137,83 @@ export default function ModuleDetailPage() {
             className="space-y-3"
             onSubmit={async (e) => {
               e.preventDefault();
-              const res: any = await createLesson({ moduleId: moduleId as string, ...lessonForm }).unwrap();
-              if (res?.status) {
-                toast.success("Lesson added");
-                setAddOpen(false);
-                refetch();
+              if (lessonForm.type === "PDF" && !lessonForm.file) {
+                toast.error("Upload a PDF file");
+                return;
+              }
+              if (lessonForm.type === "VIDEO" && !lessonForm.file) {
+                toast.error("Upload a video file");
+                return;
+              }
+              try {
+                const res: any = await createLesson({
+                  moduleId: moduleId as string,
+                  title: lessonForm.title,
+                  description: lessonForm.description,
+                  type: lessonForm.type,
+                  duration: lessonForm.duration,
+                  order: Number(lessonForm.order) || 0,
+                  file: lessonForm.type === "PDF" ? lessonForm.file : undefined,
+                  video: lessonForm.type === "VIDEO" ? lessonForm.file : undefined,
+                  allowPdfPreview: lessonForm.allowPdfPreview,
+                  allowPdfDownload: lessonForm.allowPdfDownload,
+                }).unwrap();
+                if (res?.status) {
+                  toast.success(res?.message || "Lesson added");
+                  setAddOpen(false);
+                } else {
+                  toast.error(res?.message || "Could not add lesson");
+                }
+              } catch (err: any) {
+                toast.error(apiError(err, "Could not add lesson"));
               }
             }}
           >
             <div className="space-y-1.5"><Label>Title</Label><Input value={lessonForm.title} onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })} required /></div>
-            <div className="space-y-1.5"><Label>Summary</Label><Textarea value={lessonForm.summary} onChange={(e) => setLessonForm({ ...lessonForm, summary: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Description</Label><Textarea value={lessonForm.description} onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Type</Label>
-                <Select value={lessonForm.type} onValueChange={(v) => setLessonForm({ ...lessonForm, type: v })}>
+                <Select value={lessonForm.type} onValueChange={(value) => setLessonForm({ ...lessonForm, type: value, file: undefined })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pdf">PDF</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="quiz">Quiz</SelectItem>
+                    <SelectItem value="PDF">PDF</SelectItem>
+                    <SelectItem value="VIDEO">Video</SelectItem>
+                    <SelectItem value="QUIZ">Quiz</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5"><Label>Duration</Label><Input value={lessonForm.duration} onChange={(e) => setLessonForm({ ...lessonForm, duration: e.target.value })} placeholder="10 min" /></div>
+              <div className="space-y-1.5"><Label>Duration (minutes)</Label><Input type="number" min={0} value={lessonForm.duration} onChange={(e) => setLessonForm({ ...lessonForm, duration: e.target.value })} /></div>
             </div>
+            <div className="space-y-1.5"><Label>Order</Label><Input type="number" min={0} value={lessonForm.order} onChange={(e) => setLessonForm({ ...lessonForm, order: e.target.value })} /></div>
+            {lessonForm.type !== "QUIZ" && (
+              <div className="space-y-1.5">
+                <Label>{lessonForm.type === "VIDEO" ? "Video file" : "PDF file"}</Label>
+                <Input
+                  type="file"
+                  accept={lessonForm.type === "VIDEO" ? "video/*" : "application/pdf"}
+                  onChange={(e) => setLessonForm({ ...lessonForm, file: e.target.files?.[0] })}
+                />
+              </div>
+            )}
+            {lessonForm.type === "PDF" && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={lessonForm.allowPdfPreview}
+                    onCheckedChange={(checked) => setLessonForm({ ...lessonForm, allowPdfPreview: Boolean(checked) })}
+                  />
+                  Allow preview
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={lessonForm.allowPdfDownload}
+                    onCheckedChange={(checked) => setLessonForm({ ...lessonForm, allowPdfDownload: Boolean(checked) })}
+                  />
+                  Allow download
+                </label>
+              </div>
+            )}
             <DialogFooter><Button type="submit" disabled={creating}>{creating ? "Saving..." : "Add lesson"}</Button></DialogFooter>
           </form>
         </DialogContent>
@@ -144,33 +227,46 @@ export default function ModuleDetailPage() {
               className="space-y-3"
               onSubmit={async (e) => {
                 e.preventDefault();
-                await updateLesson({
-                  moduleId: moduleId as string,
-                  lessonId: editOpen._id,
-                  title: editOpen.title,
-                  summary: editOpen.summary,
-                  type: editOpen.type,
-                  duration: editOpen.duration,
-                }).unwrap();
-                toast.success("Lesson updated");
-                setEditOpen(null);
-                refetch();
+                try {
+                  const res: any = await updateLesson({
+                    lessonId: editOpen._id,
+                    title: editOpen.title,
+                    description: editOpen.description ?? editOpen.summary,
+                    duration: editOpen.duration,
+                    order: editOpen.order,
+                    file: String(editOpen.type).toUpperCase() === "PDF" ? editOpen.file : undefined,
+                    video: String(editOpen.type).toUpperCase() === "VIDEO" ? editOpen.file : undefined,
+                    allowPdfPreview: editOpen.allowPdfPreview,
+                    allowPdfDownload: editOpen.allowPdfDownload,
+                  }).unwrap();
+                  if (res?.status) {
+                    toast.success(res?.message || "Lesson updated");
+                    setEditOpen(null);
+                  } else {
+                    toast.error(res?.message || "Could not update lesson");
+                  }
+                } catch (err: any) {
+                  toast.error(apiError(err, "Could not update lesson"));
+                }
               }}
             >
               <div className="space-y-1.5"><Label>Title</Label><Input value={editOpen.title} onChange={(e) => setEditOpen({ ...editOpen, title: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label>Summary</Label><Textarea value={editOpen.summary ?? ""} onChange={(e) => setEditOpen({ ...editOpen, summary: e.target.value })} /></div>
-              <div className="space-y-1.5">
-                <Label>Type</Label>
-                <Select value={editOpen.type} onValueChange={(v) => setEditOpen({ ...editOpen, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pdf">PDF</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="quiz">Quiz</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-1.5"><Label>Description</Label><Textarea value={editOpen.description ?? editOpen.summary ?? ""} onChange={(e) => setEditOpen({ ...editOpen, description: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label>Duration (minutes)</Label><Input type="number" min={0} value={editOpen.duration ?? 0} onChange={(e) => setEditOpen({ ...editOpen, duration: e.target.value })} /></div>
+                <div className="space-y-1.5"><Label>Order</Label><Input type="number" min={0} value={editOpen.order ?? 1} onChange={(e) => setEditOpen({ ...editOpen, order: e.target.value })} /></div>
               </div>
-              <DialogFooter><Button type="submit">Save</Button></DialogFooter>
+              {["PDF", "VIDEO"].includes(String(editOpen.type).toUpperCase()) && (
+                <div className="space-y-1.5">
+                  <Label>Replace file (optional)</Label>
+                  <Input
+                    type="file"
+                    accept={String(editOpen.type).toUpperCase() === "VIDEO" ? "video/*" : "application/pdf"}
+                    onChange={(e) => setEditOpen({ ...editOpen, file: e.target.files?.[0] })}
+                  />
+                </div>
+              )}
+              <DialogFooter><Button type="submit" disabled={updatingLesson}>{updatingLesson ? "Saving..." : "Save"}</Button></DialogFooter>
             </form>
           )}
         </DialogContent>
@@ -182,14 +278,22 @@ export default function ModuleDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(null)}>Cancel</Button>
             <Button
+              disabled={deletingLesson}
               onClick={async () => {
-                await removeLesson({ moduleId: moduleId as string, lessonId: deleteOpen._id }).unwrap();
-                toast.success("Lesson deleted");
-                setDeleteOpen(null);
-                refetch();
+                try {
+                  const res: any = await removeLesson({ lessonId: deleteOpen._id }).unwrap();
+                  if (res?.status) {
+                    toast.success(res?.message || "Lesson deleted");
+                    setDeleteOpen(null);
+                  } else {
+                    toast.error(res?.message || "Could not delete lesson");
+                  }
+                } catch (err: any) {
+                  toast.error(apiError(err, "Could not delete lesson"));
+                }
               }}
             >
-              Delete
+              {deletingLesson ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -202,16 +306,26 @@ export default function ModuleDetailPage() {
             className="space-y-3"
             onSubmit={async (e) => {
               e.preventDefault();
-              await updateModule({ id: moduleId as string, ...moduleForm }).unwrap();
-              toast.success("Module updated");
-              setEditModuleOpen(false);
-              refetch();
+              try {
+                const res: any = await updateModule({ id: moduleId as string, ...moduleForm }).unwrap();
+                if (res?.status) {
+                  toast.success(res?.message || "Module updated");
+                  setEditModuleOpen(false);
+                } else {
+                  toast.error(res?.message || "Could not update module");
+                }
+              } catch (err: any) {
+                toast.error(apiError(err, "Could not update module"));
+              }
             }}
           >
             <div className="space-y-1.5"><Label>Title</Label><Input value={moduleForm.title} onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Description</Label><Textarea value={moduleForm.description} onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label>Duration</Label><Input value={moduleForm.duration} onChange={(e) => setModuleForm({ ...moduleForm, duration: e.target.value })} /></div>
-            <DialogFooter><Button type="submit">Save</Button></DialogFooter>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Duration (minutes)</Label><Input type="number" min={0} value={moduleForm.duration} onChange={(e) => setModuleForm({ ...moduleForm, duration: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Order</Label><Input type="number" min={0} value={moduleForm.order} onChange={(e) => setModuleForm({ ...moduleForm, order: e.target.value })} /></div>
+            </div>
+            <DialogFooter><Button type="submit" disabled={updatingModule}>{updatingModule ? "Saving..." : "Save"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -223,13 +337,22 @@ export default function ModuleDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteModuleOpen(false)}>Cancel</Button>
             <Button
+              disabled={deletingModule}
               onClick={async () => {
-                await deleteModule(moduleId as string).unwrap();
-                toast.success("Module deleted");
-                navigate("/admin/module-management");
+                try {
+                  const res: any = await deleteModule(moduleId as string).unwrap();
+                  if (res?.status) {
+                    toast.success(res?.message || "Module deleted");
+                    navigate("/admin/module-management");
+                  } else {
+                    toast.error(res?.message || "Could not delete module");
+                  }
+                } catch (err: any) {
+                  toast.error(apiError(err, "Could not delete module"));
+                }
               }}
             >
-              Delete module
+              {deletingModule ? "Deleting..." : "Delete module"}
             </Button>
           </DialogFooter>
         </DialogContent>

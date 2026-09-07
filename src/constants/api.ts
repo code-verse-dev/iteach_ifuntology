@@ -1,7 +1,7 @@
 const { hostname } = window.location;
 
 const servers = {
-  local: "http://localhost:3030",
+  local: "http://localhost:3034",
   live: "https://api.iteach-ifuntology.com",
 };
 

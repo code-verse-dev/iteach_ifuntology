@@ -2,8 +2,10 @@ import * as React from "react";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import Topbar from "@/components/layout/Topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { useNotificationRealtime } from "@/hooks/useNotificationRealtime";
 
 export default function DashboardWithSidebarLayout({ children }: { children: React.ReactNode }) {
+  useNotificationRealtime();
   return (
     <div className="bg-app min-h-screen">
       <SidebarProvider defaultOpen>

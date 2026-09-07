@@ -1,6 +1,5 @@
 import { Bell, LogOut, User } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useDispatch, useSelector } from "react-redux";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLogoutMutation } from "@/redux/services/apiSlices/authSlice";
-import { useGetAllNotificationsQuery } from "@/redux/services/apiSlices/notificationSlice";
+import { useGetNotificationsQuery } from "@/redux/services/apiSlices/notificationSlice";
 import { removeUser } from "@/redux/services/Slices/userSlice";
 import { RootState } from "@/redux/store";
 import { ROLE_HOME, UserRole } from "@/constants/roles";
@@ -37,18 +36,18 @@ export default function Topbar() {
   const user = useSelector((state: RootState) => state?.user?.userData);
   const dispatch = useDispatch();
   const role: UserRole = user?.role ?? "student";
-  const { data } = useGetAllNotificationsQuery({ role });
+  const { data } = useGetNotificationsQuery({ role, page: 1, limit: 1 });
   const unreadCount: number = data?.data?.unreadCount ?? 0;
 
   const onLogout = async () => {
     try {
       await logout().unwrap();
-      dispatch(removeUser());
-      setLogoutDialogOpen(false);
-      navigate("/login", { replace: true });
     } catch {
-      toast.error("Could not log out. Please try again.");
+      // Still clear the local session if the API call fails.
     }
+    dispatch(removeUser());
+    setLogoutDialogOpen(false);
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -69,7 +68,9 @@ export default function Topbar() {
             <Link to={`/${role}/notifications`} aria-label="Notifications">
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
               )}
             </Link>
           </Button>

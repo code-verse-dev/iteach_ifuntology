@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Mail, Reply } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -91,7 +92,7 @@ export default function PersonDetailDialog({
                   <Field label="Role" value={isTeacher ? "Teacher" : "Student"} />
                   <Field label="Status" value={isActive ? "Active" : "Suspended"} className={isActive ? "text-emerald-600" : "text-rose-500"} />
                   <Field label="Registered date" value={registered} />
-                  <Field label="Phone" value={person.phone} />
+                  <Field label="Phone" value={person.phoneNumber ?? person.phone} />
                 </div>
 
                 {isTeacher && (person.organization || person.city || person.country) && (
@@ -164,6 +165,23 @@ export default function PersonDetailDialog({
                       </div>
                     ) : (
                       <p className="px-1 text-xs italic text-muted-foreground">No course enrollments</p>
+                    )}
+                    {(person.certificates ?? []).length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <p className="px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Certificates</p>
+                        {person.certificates.map((cert: any) => (
+                          <Link
+                            key={cert._id}
+                            to={`/admin/certificates/${cert._id}`}
+                            className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50 px-4 py-3"
+                          >
+                            <span className="text-xs font-bold text-emerald-700">
+                              {cert.course?.title ?? cert.courseType ?? "Certificate"}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">View</span>
+                          </Link>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}

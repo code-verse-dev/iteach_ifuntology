@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,53 +29,65 @@ import {
   useGetModulesQuery,
   useUpdateModuleMutation,
 } from "@/redux/services/apiSlices/courseSlice";
-import { courses } from "@/mock/data";
+import { courseRouteKey, formatDuration } from "@/utils/mediaUrl";
 
-const PAGE_SIZE = 5;
+function apiError(err: any, fallback: string) {
+  const message = err?.data?.message;
+  if (Array.isArray(message)) return message[0] || fallback;
+  return message || fallback;
+}
 
 export default function ModuleManagementPage() {
   const [params, setParams] = useSearchParams();
   const { data: coursesData } = useGetCoursesQuery();
-  const catalog = coursesData?.data ?? courses;
-  const courseFilter = params.get("course") ?? catalog[0]?._id ?? "c-fun";
-  const { data, refetch } = useGetModulesQuery(courseFilter);
-  const list = data?.data ?? [];
+  const catalog = coursesData?.data ?? [];
+  const courseFilter = params.get("course") ?? catalog[0]?.courseType ?? "";
   const [page, setPage] = useState(1);
+  const { data, isFetching } = useGetModulesQuery(
+    { courseType: courseFilter, page, limit: 5 },
+    { skip: !courseFilter },
+  );
+  const list = data?.data ?? [];
+  const meta = data?.meta ?? { page: 1, totalPages: 1, totalDocs: 0 };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [deleting, setDeleting] = useState<any>(null);
   const [createModule, { isLoading: creating }] = useCreateModuleMutation();
   const [updateModule, { isLoading: updating }] = useUpdateModuleMutation();
-  const [deleteModule] = useDeleteModuleMutation();
-  const [form, setForm] = useState({ courseId: courseFilter, title: "", description: "", duration: "", order: "1" });
+  const [deleteModule, { isLoading: removing }] = useDeleteModuleMutation();
+  const [form, setForm] = useState({
+    courseType: courseFilter,
+    title: "",
+    description: "",
+    duration: "0",
+    order: "1",
+  });
 
-  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
-  const paginated = useMemo(
-    () => list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [list, page],
-  );
-
-  const setCourse = (courseId: string) => {
-    setParams({ course: courseId });
+  const setCourse = (courseType: string) => {
+    setParams({ course: courseType });
     setPage(1);
-    setForm((f) => ({ ...f, courseId }));
+    setForm((current) => ({ ...current, courseType }));
   };
 
   const submitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res: any = await createModule({
-        ...form,
-        order: Number(form.order) || 1,
+        courseType: form.courseType || courseFilter,
+        title: form.title,
+        description: form.description,
+        duration: form.duration,
+        order: Number(form.order) || 0,
       }).unwrap();
       if (res?.status) {
-        toast.success("Module created");
+        toast.success(res?.message || "Module created");
         setOpen(false);
-        setForm({ courseId: courseFilter, title: "", description: "", duration: "", order: "1" });
-        refetch();
+        setForm({ courseType: courseFilter, title: "", description: "", duration: "0", order: "1" });
+      } else {
+        toast.error(res?.message || "Could not create module");
       }
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not create module");
+      toast.error(apiError(err, "Could not create module"));
     }
   };
 
@@ -87,15 +99,16 @@ export default function ModuleManagementPage() {
         title: editing.title,
         description: editing.description,
         duration: editing.duration,
-        order: Number(editing.order) || 1,
+        order: Number(editing.order) || 0,
       }).unwrap();
       if (res?.status) {
-        toast.success("Module updated");
+        toast.success(res?.message || "Module updated");
         setEditing(null);
-        refetch();
+      } else {
+        toast.error(res?.message || "Could not update module");
       }
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not update module");
+      toast.error(apiError(err, "Could not update module"));
     }
   };
 
@@ -109,29 +122,35 @@ export default function ModuleManagementPage() {
       />
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {catalog.map((c: any) => (
-          <Button
-            key={c._id}
-            size="sm"
-            variant={courseFilter === c._id ? "default" : "outline"}
-            className="rounded-full"
-            onClick={() => setCourse(c._id)}
-          >
-            {c.title}
-          </Button>
-        ))}
+        {catalog.map((course: any) => {
+          const key = courseRouteKey(course);
+          return (
+            <Button
+              key={course._id}
+              size="sm"
+              variant={courseFilter === key ? "default" : "outline"}
+              className="rounded-full"
+              onClick={() => setCourse(key)}
+            >
+              {course.title}
+            </Button>
+          );
+        })}
       </div>
 
       <div className="space-y-4">
-        {paginated.map((mod: any) => (
+        {list.map((mod: any) => (
           <article key={mod._id} className="surface-card rounded-2xl border border-border/70 p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                  {catalog.find((c: any) => c._id === mod.courseId)?.title}
+                  {mod.courseType}
                 </p>
                 <h2 className="mt-1 text-lg font-semibold">{mod.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{mod.description}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Order {mod.order} · {formatDuration(mod.duration) || "No duration"} · {mod.lessons?.length ?? 0} lessons
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => setEditing({ ...mod })}>
@@ -146,29 +165,39 @@ export default function ModuleManagementPage() {
               </div>
             </div>
             <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-              {mod.lessons.map((lesson: any) => (
+              {(mod.lessons ?? []).map((lesson: any) => (
                 <li key={lesson._id} className="flex items-center justify-between rounded-xl bg-secondary/80 px-4 py-3 text-sm">
                   <span>{lesson.title}</span>
                   <Badge variant="secondary">{lesson.type}</Badge>
                 </li>
               ))}
-              {mod.lessons.length === 0 && (
+              {(mod.lessons ?? []).length === 0 && (
                 <li className="text-sm text-muted-foreground">No lessons yet. Open the module to add one.</li>
               )}
             </ul>
           </article>
         ))}
+        {list.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {isFetching ? "Loading modules..." : "No modules found for this course."}
+          </p>
+        )}
       </div>
 
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Page {page} of {totalPages} · {list.length} modules
+          Page {meta.page} of {meta.totalPages || 1} · {meta.totalDocs} modules
         </p>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+          <Button variant="outline" size="sm" disabled={page <= 1 || isFetching} onClick={() => setPage((p) => p - 1)}>
             <ChevronLeft className="h-4 w-4" /> Previous
           </Button>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= (meta.totalPages || 1) || isFetching}
+            onClick={() => setPage((p) => p + 1)}
+          >
             Next <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -180,18 +209,20 @@ export default function ModuleManagementPage() {
           <form className="space-y-3" onSubmit={submitCreate}>
             <div className="space-y-1.5">
               <Label>Course type</Label>
-              <Select value={form.courseId} onValueChange={(v) => setForm({ ...form, courseId: v })}>
+              <Select value={form.courseType || courseFilter} onValueChange={(value) => setForm({ ...form, courseType: value })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {catalog.map((c: any) => <SelectItem key={c._id} value={c._id}>{c.title}</SelectItem>)}
+                  {catalog.map((course: any) => (
+                    <SelectItem key={course._id} value={courseRouteKey(course)}>{course.title}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5"><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
             <div className="space-y-1.5"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Duration</Label><Input value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} placeholder="20 min" /></div>
-              <div className="space-y-1.5"><Label>Order</Label><Input type="number" min={1} value={form.order} onChange={(e) => setForm({ ...form, order: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Duration (minutes)</Label><Input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Order</Label><Input type="number" min={0} value={form.order} onChange={(e) => setForm({ ...form, order: e.target.value })} /></div>
             </div>
             <DialogFooter><Button type="submit" disabled={creating}>{creating ? "Saving..." : "Create"}</Button></DialogFooter>
           </form>
@@ -206,7 +237,7 @@ export default function ModuleManagementPage() {
               <div className="space-y-1.5"><Label>Title</Label><Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} required /></div>
               <div className="space-y-1.5"><Label>Description</Label><Textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Duration</Label><Input value={editing.duration ?? ""} onChange={(e) => setEditing({ ...editing, duration: e.target.value })} /></div>
+                <div className="space-y-1.5"><Label>Duration (minutes)</Label><Input type="number" min={0} value={editing.duration ?? 0} onChange={(e) => setEditing({ ...editing, duration: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Order</Label><Input type="number" value={editing.order ?? 1} onChange={(e) => setEditing({ ...editing, order: e.target.value })} /></div>
               </div>
               <DialogFooter><Button type="submit" disabled={updating}>{updating ? "Saving..." : "Save changes"}</Button></DialogFooter>
@@ -222,14 +253,22 @@ export default function ModuleManagementPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button>
             <Button
+              disabled={removing}
               onClick={async () => {
-                await deleteModule(deleting._id).unwrap();
-                toast.success("Module deleted");
-                setDeleting(null);
-                refetch();
+                try {
+                  const res: any = await deleteModule(deleting._id).unwrap();
+                  if (res?.status) {
+                    toast.success(res?.message || "Module deleted");
+                    setDeleting(null);
+                  } else {
+                    toast.error(res?.message || "Could not delete module");
+                  }
+                } catch (err: any) {
+                  toast.error(apiError(err, "Could not delete module"));
+                }
               }}
             >
-              Delete
+              {removing ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -7,12 +7,18 @@ import PasswordField from "@/components/inputs/PasswordField";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useResetPasswordMutation } from "@/redux/services/apiSlices/authSlice";
+import { UserRole } from "@/constants/roles";
+import {
+  getPasswordValidationError,
+  PASSWORD_POLICY_HINT,
+} from "@/utils/passwordValidation";
 
 export default function RecoverPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email;
   const code = location.state?.code;
+  const type: UserRole | undefined = location.state?.type;
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
@@ -22,17 +28,22 @@ export default function RecoverPasswordPage() {
   }, []);
 
   useEffect(() => {
-    if (!email || !code) navigate("/forgot-password", { replace: true });
-  }, [email, code, navigate]);
+    if (!email || !code || !type) navigate("/forgot-password", { replace: true });
+  }, [email, code, type, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
     if (password !== confirm) {
       toast.error("Passwords do not match");
       return;
     }
     try {
-      const res: any = await resetPassword({ email, code, password }).unwrap();
+      const res: any = await resetPassword({ email, code, password, type: type! }).unwrap();
       if (res?.status) {
         toast.success("Password updated. Please sign in.");
         navigate("/login");
@@ -55,6 +66,7 @@ export default function RecoverPasswordPage() {
             <div className="space-y-2">
               <Label>New password</Label>
               <PasswordField value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_HINT}</p>
             </div>
             <div className="space-y-2">
               <Label>Confirm password</Label>

@@ -1,119 +1,271 @@
-import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react";
-import { courses, Lesson, Module, Quiz, QuizQuestionItem, Survey, SurveyQuestionItem } from "@/mock/data";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { Quiz, QuizQuestionItem } from "@/mock/data";
 import {
-  createLesson,
-  createModule,
   createQuizQuestion,
-  createSurvey,
-  createSurveyQuestion,
   createVideo,
   delay,
-  deleteLesson,
-  deleteModule,
   deleteQuizQuestion,
-  deleteSurveyQuestion,
   fail,
-  getModule,
   getQuiz,
-  getSurvey,
-  listModules,
   listQuizQuestions,
   listQuizzes,
-  listSurveyQuestions,
-  listSurveys,
   listVideos,
   ok,
-  updateLesson,
-  updateModule,
   updateQuiz,
   updateQuizQuestion,
-  updateSurveyQuestion,
 } from "@/mock/store";
+import { rawBaseQuery } from "@/redux/reauth/baseQueryWithReauth";
+import { toMinutes } from "@/utils/mediaUrl";
+
+const isObjectId = (value?: string) => /^[a-fA-F0-9]{24}$/.test(value ?? "");
+
+const normalizeCourse = (course: any) => {
+  if (!course) return course;
+  return {
+    ...course,
+    title: course.title ?? course.courseType,
+    slug: course.courseType,
+    modules: course.totalModules ?? course.modules ?? 0,
+    lessons: course.totalContent ?? course.lessons ?? 0,
+    students: course.totalAssignments ?? course.students ?? 0,
+    totalCertificates: course.totalCertificates ?? 0,
+    status: course.status ?? "published",
+  };
+};
+
+const normalizeLesson = (lesson: any) => ({
+  ...lesson,
+  summary: lesson?.description ?? lesson?.summary,
+  type: lesson?.type,
+});
+
+const normalizeModule = (mod: any) => ({
+  ...mod,
+  courseId: mod?.courseType,
+  lessons: (mod?.lessons ?? [])
+    .map(normalizeLesson)
+    .sort((a: any, b: any) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+});
+
+function appendLessonFields(
+  formData: FormData,
+  body: {
+    title?: string;
+    description?: string;
+    summary?: string;
+    type?: string;
+    duration?: unknown;
+    order?: unknown;
+    allowPdfPreview?: boolean;
+    allowPdfDownload?: boolean;
+  },
+) {
+  if (body.title !== undefined) formData.append("title", body.title);
+  const description = body.description ?? body.summary;
+  if (description !== undefined) formData.append("description", description);
+  if (body.type !== undefined) formData.append("type", String(body.type).toUpperCase());
+  if (body.duration !== undefined) formData.append("duration", String(toMinutes(body.duration)));
+  if (body.order !== undefined) formData.append("order", String(Number(body.order) || 0));
+  if (body.allowPdfPreview !== undefined) formData.append("allowPdfPreview", String(body.allowPdfPreview));
+  if (body.allowPdfDownload !== undefined) formData.append("allowPdfDownload", String(body.allowPdfDownload));
+}
 
 export const courseSlice = createApi({
   reducerPath: "courseSlice",
-  baseQuery: fakeBaseQuery(),
-  tagTypes: ["Courses", "Modules", "Quizzes", "Videos", "Surveys"],
+  baseQuery: rawBaseQuery,
+  tagTypes: ["Courses", "Modules", "Lessons", "Quizzes", "Videos"],
   endpoints: (builder) => ({
     getCourses: builder.query({
-      async queryFn() {
-        await delay();
-        return { data: ok(courses) };
-      },
+      query: () => ({
+        url: "/course",
+        method: "GET",
+      }),
+      transformResponse: (response: any) => ({
+        status: response?.status,
+        message: response?.message,
+        data: (Array.isArray(response?.data) ? response.data : []).map(normalizeCourse),
+      }),
       providesTags: ["Courses"],
     }),
     getCourseById: builder.query({
-      async queryFn(id: string) {
-        await delay();
-        const course = courses.find((c) => c._id === id || c.slug === id);
-        return { data: ok(course) };
-      },
+      query: (id: string) => ({
+        url: isObjectId(id)
+          ? `/course/${id}`
+          : `/course-module/course/by-type/${encodeURIComponent(id)}`,
+        method: "GET",
+      }),
+      transformResponse: (response: any) => ({
+        status: response?.status,
+        message: response?.message,
+        data: normalizeCourse(response?.data),
+      }),
+      providesTags: ["Courses"],
     }),
-    getModules: builder.query({
-      async queryFn(courseId?: string) {
-        await delay();
-        return { data: ok(listModules(courseId)) };
+    getModules: builder.query<
+      any,
+      | string
+      | {
+          courseType?: string;
+          page?: number;
+          limit?: number;
+          keyword?: string;
+        }
+      | void
+    >({
+      query: (arg) => {
+        const params = typeof arg === "string" || !arg ? { courseType: arg || undefined } : arg;
+        return {
+          url: "/course-module",
+          method: "GET",
+          params: {
+            page: params.page ?? 1,
+            limit: params.limit ?? 100,
+            ...(params.courseType ? { courseType: params.courseType } : {}),
+            ...(params.keyword ? { keyword: params.keyword } : {}),
+          },
+        };
       },
+      transformResponse: (response: any) => ({
+        status: response?.status,
+        message: response?.message,
+        data: (response?.data?.docs ?? []).map(normalizeModule),
+        meta: {
+          totalDocs: response?.data?.totalDocs ?? 0,
+          page: response?.data?.page ?? 1,
+          limit: response?.data?.limit ?? 100,
+          totalPages: response?.data?.totalPages ?? 1,
+        },
+      }),
       providesTags: ["Modules"],
     }),
     getModuleById: builder.query({
-      async queryFn(id: string) {
-        await delay();
-        return { data: ok(getModule(id)) };
-      },
+      query: (id: string) => ({
+        url: `/course-module/${id}`,
+        method: "GET",
+      }),
+      transformResponse: (response: any) => ({
+        status: response?.status,
+        message: response?.message,
+        data: normalizeModule(response?.data),
+      }),
       providesTags: ["Modules"],
     }),
+    getLessonById: builder.query({
+      query: (id: string) => ({
+        url: `/lesson/${id}`,
+        method: "GET",
+      }),
+      transformResponse: (response: any) => ({
+        status: response?.status,
+        message: response?.message,
+        data: normalizeLesson(response?.data),
+      }),
+      providesTags: ["Lessons"],
+    }),
     createModule: builder.mutation({
-      async queryFn(body: { courseId: string; title: string; description?: string; duration?: string; order?: number }) {
-        await delay();
-        return { data: ok(createModule(body), "Module created") };
-      },
-      invalidatesTags: ["Modules"],
+      query: (body: {
+        courseType?: string;
+        courseId?: string;
+        title: string;
+        description?: string;
+        duration?: number | string;
+        order?: number;
+        status?: "ACTIVE" | "INACTIVE";
+      }) => ({
+        url: "/course-module",
+        method: "POST",
+        body: {
+          courseType: body.courseType || body.courseId,
+          title: body.title,
+          description: body.description,
+          duration: toMinutes(body.duration),
+          order: Number(body.order) || 0,
+          ...(body.status ? { status: body.status } : {}),
+        },
+      }),
+      invalidatesTags: ["Modules", "Courses"],
     }),
     updateModule: builder.mutation({
-      async queryFn(body: { id: string } & Partial<Module>) {
-        await delay();
-        const mod = updateModule(body.id, body);
-        if (!mod) return { error: { status: 404, data: fail("Module not found") } };
-        return { data: ok(mod, "Module updated") };
-      },
-      invalidatesTags: ["Modules"],
+      query: (body: {
+        id: string;
+        title?: string;
+        description?: string;
+        duration?: number | string;
+        order?: number;
+        status?: "ACTIVE" | "INACTIVE";
+      }) => ({
+        url: `/course-module/${body.id}`,
+        method: "PATCH",
+        body: {
+          ...(body.title !== undefined ? { title: body.title } : {}),
+          ...(body.description !== undefined ? { description: body.description } : {}),
+          ...(body.duration !== undefined ? { duration: toMinutes(body.duration) } : {}),
+          ...(body.order !== undefined ? { order: Number(body.order) || 0 } : {}),
+          ...(body.status ? { status: body.status } : {}),
+        },
+      }),
+      invalidatesTags: ["Modules", "Courses"],
     }),
     deleteModule: builder.mutation({
-      async queryFn(id: string) {
-        await delay();
-        if (!deleteModule(id)) return { error: { status: 404, data: fail("Module not found") } };
-        return { data: ok({}, "Module deleted") };
-      },
-      invalidatesTags: ["Modules"],
+      query: (id: string) => ({
+        url: `/course-module/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Modules", "Courses", "Lessons"],
     }),
     createLesson: builder.mutation({
-      async queryFn(body: { moduleId: string } & Omit<Lesson, "_id">) {
-        await delay();
-        const lesson = createLesson(body.moduleId, body);
-        if (!lesson) return { error: { status: 404, data: fail("Module not found") } };
-        return { data: ok(lesson, "Lesson added") };
+      query: (body: {
+        moduleId?: string;
+        courseModule?: string;
+        title: string;
+        description?: string;
+        summary?: string;
+        type: string;
+        duration?: number | string;
+        order?: number;
+        file?: File;
+        video?: File;
+        allowPdfPreview?: boolean;
+        allowPdfDownload?: boolean;
+      }) => {
+        const formData = new FormData();
+        formData.append("courseModule", body.moduleId || body.courseModule || "");
+        appendLessonFields(formData, body);
+        if (body.file) formData.append("file", body.file);
+        if (body.video) formData.append("video", body.video);
+        return { url: "/lesson", method: "POST", body: formData };
       },
-      invalidatesTags: ["Modules"],
+      invalidatesTags: ["Modules", "Lessons", "Courses"],
     }),
     updateLesson: builder.mutation({
-      async queryFn(body: { moduleId: string; lessonId: string } & Partial<Lesson>) {
-        await delay();
-        const lesson = updateLesson(body.moduleId, body.lessonId, body);
-        if (!lesson) return { error: { status: 404, data: fail("Lesson not found") } };
-        return { data: ok(lesson, "Lesson updated") };
+      query: (body: {
+        lessonId: string;
+        moduleId?: string;
+        title?: string;
+        description?: string;
+        summary?: string;
+        type?: string;
+        duration?: number | string;
+        order?: number;
+        file?: File;
+        video?: File;
+        allowPdfPreview?: boolean;
+        allowPdfDownload?: boolean;
+      }) => {
+        const formData = new FormData();
+        appendLessonFields(formData, body);
+        if (body.file) formData.append("file", body.file);
+        if (body.video) formData.append("video", body.video);
+        return { url: `/lesson/${body.lessonId}`, method: "PATCH", body: formData };
       },
-      invalidatesTags: ["Modules"],
+      invalidatesTags: ["Modules", "Lessons"],
     }),
     deleteLesson: builder.mutation({
-      async queryFn(body: { moduleId: string; lessonId: string }) {
-        await delay();
-        if (!deleteLesson(body.moduleId, body.lessonId)) {
-          return { error: { status: 404, data: fail("Lesson not found") } };
-        }
-        return { data: ok({}, "Lesson deleted") };
-      },
-      invalidatesTags: ["Modules"],
+      query: (body: { lessonId: string; moduleId?: string }) => ({
+        url: `/lesson/${body.lessonId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Modules", "Lessons", "Courses"],
     }),
     getQuizzes: builder.query({
       async queryFn(courseId?: string) {
@@ -183,58 +335,6 @@ export const courseSlice = createApi({
       },
       invalidatesTags: ["Videos"],
     }),
-    getSurveys: builder.query({
-      async queryFn() {
-        await delay();
-        return { data: ok(listSurveys()) };
-      },
-      providesTags: ["Surveys"],
-    }),
-    createSurvey: builder.mutation({
-      async queryFn(body: Omit<Survey, "_id" | "questions" | "responses">) {
-        await delay();
-        return { data: ok(createSurvey(body), "Survey created") };
-      },
-      invalidatesTags: ["Surveys"],
-    }),
-    getSurveyById: builder.query({
-      async queryFn(id: string) {
-        await delay();
-        return { data: ok(getSurvey(id)) };
-      },
-      providesTags: ["Surveys"],
-    }),
-    getSurveyQuestions: builder.query({
-      async queryFn(surveyId: string) {
-        await delay();
-        return { data: ok(listSurveyQuestions(surveyId)) };
-      },
-      providesTags: ["Surveys"],
-    }),
-    createSurveyQuestion: builder.mutation({
-      async queryFn(body: { surveyId: string } & Omit<SurveyQuestionItem, "_id" | "surveyId">) {
-        await delay();
-        return { data: ok(createSurveyQuestion(body.surveyId, body), "Question added") };
-      },
-      invalidatesTags: ["Surveys"],
-    }),
-    updateSurveyQuestion: builder.mutation({
-      async queryFn(body: { id: string } & Partial<SurveyQuestionItem>) {
-        await delay();
-        const question = updateSurveyQuestion(body.id, body);
-        if (!question) return { error: { status: 404, data: fail("Question not found") } };
-        return { data: ok(question, "Question updated") };
-      },
-      invalidatesTags: ["Surveys"],
-    }),
-    deleteSurveyQuestion: builder.mutation({
-      async queryFn(id: string) {
-        await delay();
-        if (!deleteSurveyQuestion(id)) return { error: { status: 404, data: fail("Question not found") } };
-        return { data: ok({}, "Question deleted") };
-      },
-      invalidatesTags: ["Surveys"],
-    }),
   }),
 });
 
@@ -243,6 +343,7 @@ export const {
   useGetCourseByIdQuery,
   useGetModulesQuery,
   useGetModuleByIdQuery,
+  useGetLessonByIdQuery,
   useCreateModuleMutation,
   useUpdateModuleMutation,
   useDeleteModuleMutation,
@@ -258,11 +359,4 @@ export const {
   useDeleteQuizQuestionMutation,
   useGetVideosQuery,
   useCreateVideoMutation,
-  useGetSurveysQuery,
-  useCreateSurveyMutation,
-  useGetSurveyByIdQuery,
-  useGetSurveyQuestionsQuery,
-  useCreateSurveyQuestionMutation,
-  useUpdateSurveyQuestionMutation,
-  useDeleteSurveyQuestionMutation,
 } = courseSlice;

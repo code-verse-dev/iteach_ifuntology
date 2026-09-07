@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import AppPage, { PageHeader } from "@/components/layout/PageShell";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -24,12 +25,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  useCreateSurveyQuestionMutation,
+  useCreateSurveyQuestionsMutation,
   useDeleteSurveyQuestionMutation,
+  useGetQuestionStatsQuery,
   useGetSurveyByIdQuery,
   useGetSurveyQuestionsQuery,
+  useGetSurveyResponsesQuery,
+  useGetSurveyStatsQuery,
+  useToggleSurveyMutation,
   useUpdateSurveyQuestionMutation,
-} from "@/redux/services/apiSlices/courseSlice";
+} from "@/redux/services/apiSlices/surveySlice";
+import { formatDate } from "@/lib/utils";
 
 const EMPTY_Q = {
   question: "",
@@ -42,15 +48,28 @@ const EMPTY_Q = {
 const typeLabel = (type: string) =>
   type === "yes_no" ? "Yes / No" : type === "multiple_choice" ? "Multiple choice" : type === "rating" ? "Rating" : "Text";
 
+const questionOptions = (type: string, options: string[] = []) => {
+  if (type === "yes_no") return ["yes", "no"];
+  if (type === "multiple_choice") return options.filter(Boolean);
+  return [];
+};
+
+const personName = (user?: any) => {
+  if (!user) return "Unknown";
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return name || user.email || "Unknown";
+};
+
 export default function SurveyDetailPage() {
   const { surveyId } = useParams();
   const { data: surveyData } = useGetSurveyByIdQuery(surveyId as string, { skip: !surveyId });
   const { data: qData, refetch } = useGetSurveyQuestionsQuery(surveyId as string, { skip: !surveyId });
   const survey = surveyData?.data;
   const questions = qData?.data ?? [];
-  const [createQuestion] = useCreateSurveyQuestionMutation();
+  const [createQuestions] = useCreateSurveyQuestionsMutation();
   const [updateQuestion] = useUpdateSurveyQuestionMutation();
   const [deleteQuestion] = useDeleteSurveyQuestionMutation();
+  const [toggleSurvey] = useToggleSurveyMutation();
   const [addOpen, setAddOpen] = useState(false);
   const [editQ, setEditQ] = useState<any>(null);
   const [deleteQ, setDeleteQ] = useState<any>(null);
@@ -66,60 +85,91 @@ export default function SurveyDetailPage() {
       <PageHeader
         eyebrow={survey?.type}
         title={survey?.title ?? "Survey"}
-        description={survey?.description || "Add and edit survey questions."}
+        description={survey?.description || "Add questions and review responses."}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>
               <Link to="/admin/surveys-evaluations">All surveys</Link>
             </Button>
+            {survey && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const res: any = await toggleSurvey(survey._id).unwrap();
+                    if (res?.status) toast.success(res?.message || "Survey status updated");
+                    else toast.error(res?.message || "Could not update survey");
+                  } catch (err: any) {
+                    toast.error(err?.data?.message || "Could not update survey");
+                  }
+                }}
+              >
+                {survey.isActive === false ? "Activate" : "Deactivate"}
+              </Button>
+            )}
             <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add question</Button>
           </div>
         }
       />
 
-      <div className="space-y-3">
-        {questions.map((q: any) => (
-          <article key={q._id} className="surface-card rounded-2xl border border-border/70 p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Question {q.order}</p>
-                <h2 className="mt-1 font-semibold">{q.question}</h2>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant="secondary">{typeLabel(q.type)}</Badge>
-                  {q.required && <Badge>Required</Badge>}
-                </div>
-                {(q.options?.length ?? 0) > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {q.options.map((opt: string) => (
-                      <span key={opt} className="rounded-full bg-secondary px-3 py-1 text-xs">{opt}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setEditQ({
-                      ...q,
-                      options: [...(q.options ?? [])],
-                    })
-                  }
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setDeleteQ(q)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          </article>
-        ))}
-        {questions.length === 0 && (
-          <p className="text-sm text-muted-foreground">No questions yet. Add the first one.</p>
-        )}
+      <div className="mb-5 flex flex-wrap gap-2">
+        {survey?.targetRole && <Badge variant="outline" className="capitalize">{survey.targetRole}</Badge>}
+        <Badge variant={survey?.isActive === false ? "secondary" : "default"}>
+          {survey?.isActive === false ? "Inactive" : "Active"}
+        </Badge>
       </div>
+
+      <Tabs defaultValue="questions">
+        <TabsList>
+          <TabsTrigger value="questions">Questions</TabsTrigger>
+          <TabsTrigger value="responses">Responses</TabsTrigger>
+          <TabsTrigger value="stats">Stats</TabsTrigger>
+        </TabsList>
+        <TabsContent value="questions" className="mt-5 space-y-3">
+          {questions.map((q: any) => (
+            <article key={q._id} className="surface-card rounded-2xl border border-border/70 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Question {q.order}</p>
+                  <h2 className="mt-1 font-semibold">{q.question}</h2>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge variant="secondary">{typeLabel(q.type)}</Badge>
+                    {q.required && <Badge>Required</Badge>}
+                  </div>
+                  {(q.options?.length ?? 0) > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {q.options.map((opt: string) => (
+                        <span key={opt} className="rounded-full bg-secondary px-3 py-1 text-xs capitalize">{opt}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditQ({ ...q, options: [...(q.options ?? [])] })}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteQ(q)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </article>
+          ))}
+          {questions.length === 0 && (
+            <p className="text-sm text-muted-foreground">No questions yet. Add the first one.</p>
+          )}
+        </TabsContent>
+        <TabsContent value="responses" className="mt-5">
+          <SurveyResponsesTab surveyId={surveyId as string} />
+        </TabsContent>
+        <TabsContent value="stats" className="mt-5">
+          <SurveyStatsTab surveyId={surveyId as string} />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-lg">
@@ -128,15 +178,21 @@ export default function SurveyDetailPage() {
             form={form}
             setForm={setForm}
             onSubmit={async () => {
-              await createQuestion({
+              const res: any = await createQuestions({
                 surveyId: surveyId as string,
-                question: form.question,
-                type: form.type,
-                options: form.type === "multiple_choice" ? form.options.filter(Boolean) : form.type === "yes_no" ? ["Yes", "No"] : [],
-                required: form.required,
-                order: Number(form.order) || questions.length + 1,
+                questions: [{
+                  question: form.question,
+                  type: form.type,
+                  options: questionOptions(form.type, form.options),
+                  required: form.required,
+                  order: Number(form.order) || questions.length + 1,
+                }],
               }).unwrap();
-              toast.success("Question added");
+              if (!res?.status) {
+                toast.error(res?.message || "Could not add question");
+                return;
+              }
+              toast.success(res?.message || "Question added");
               setAddOpen(false);
               refetch();
             }}
@@ -152,15 +208,19 @@ export default function SurveyDetailPage() {
               form={editQ}
               setForm={setEditQ}
               onSubmit={async () => {
-                await updateQuestion({
+                const res: any = await updateQuestion({
                   id: editQ._id,
                   question: editQ.question,
                   type: editQ.type,
-                  options: editQ.type === "multiple_choice" ? (editQ.options ?? []).filter(Boolean) : editQ.type === "yes_no" ? ["Yes", "No"] : [],
+                  options: questionOptions(editQ.type, editQ.options),
                   required: editQ.required,
                   order: Number(editQ.order) || 1,
                 }).unwrap();
-                toast.success("Question updated");
+                if (!res?.status) {
+                  toast.error(res?.message || "Could not update question");
+                  return;
+                }
+                toast.success(res?.message || "Question updated");
                 setEditQ(null);
                 refetch();
               }}
@@ -176,8 +236,9 @@ export default function SurveyDetailPage() {
             <Button variant="outline" onClick={() => setDeleteQ(null)}>Cancel</Button>
             <Button
               onClick={async () => {
-                await deleteQuestion(deleteQ._id).unwrap();
-                toast.success("Question deleted");
+                const res: any = await deleteQuestion(deleteQ._id).unwrap();
+                if (res?.status) toast.success(res?.message || "Question deleted");
+                else toast.error(res?.message || "Could not delete question");
                 setDeleteQ(null);
                 refetch();
               }}
@@ -188,6 +249,145 @@ export default function SurveyDetailPage() {
         </DialogContent>
       </Dialog>
     </AppPage>
+  );
+}
+
+function SurveyResponsesTab({ surveyId }: { surveyId: string }) {
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<any>(null);
+  const { data, isFetching } = useGetSurveyResponsesQuery(
+    { surveyId, page, limit: 10 },
+    { skip: !surveyId },
+  );
+  const payload = data?.data ?? {};
+  const responses = payload.responses ?? payload.docs ?? [];
+  const totalPages = payload.totalPages ?? 1;
+  const totalDocs = payload.totalDocs ?? payload.total ?? 0;
+
+  return (
+    <>
+      <div className="surface-card overflow-hidden rounded-2xl border border-border/70">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/80 text-left text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-medium">Respondent</th>
+              <th className="px-4 py-3 font-medium">Email</th>
+              <th className="px-4 py-3 font-medium">Answers</th>
+              <th className="px-4 py-3 font-medium">Submitted</th>
+              <th className="px-4 py-3 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {isFetching && (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading responses...</td></tr>
+            )}
+            {!isFetching && responses.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No responses yet.</td></tr>
+            )}
+            {responses.map((response: any) => (
+              <tr key={response._id} className="border-t border-border/60">
+                <td className="px-4 py-3 font-medium">{personName(response.user)}</td>
+                <td className="px-4 py-3 text-muted-foreground">{response.user?.email ?? "—"}</td>
+                <td className="px-4 py-3">{response.answers?.length ?? 0}</td>
+                <td className="px-4 py-3 text-muted-foreground">{formatDate(response.createdAt)}</td>
+                <td className="px-4 py-3 text-right">
+                  <Button size="sm" variant="outline" onClick={() => setSelected(response)}>
+                    <Eye className="h-3.5 w-3.5" /> View
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <span>{totalDocs} responses</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Response from {personName(selected?.user)}</DialogTitle></DialogHeader>
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+            {(selected?.answers ?? []).map((item: any, idx: number) => {
+              const question = item.question;
+              const text = typeof question === "string" ? question : question?.question;
+              return (
+                <div key={item._id ?? idx} className="rounded-xl bg-secondary px-4 py-3">
+                  <p className="text-xs text-muted-foreground">Question {idx + 1}</p>
+                  <p className="mt-1 text-sm font-medium">{text}</p>
+                  <p className="mt-1 text-sm capitalize text-primary">{String(item.answer ?? "—")}</p>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function SurveyStatsTab({ surveyId }: { surveyId: string }) {
+  const { data: statsData, isFetching: loadingStats } = useGetSurveyStatsQuery(surveyId, { skip: !surveyId });
+  const { data: questionData, isFetching: loadingQuestions } = useGetQuestionStatsQuery(surveyId, { skip: !surveyId });
+  const stats = statsData?.data;
+  const questionStats = Array.isArray(questionData?.data) ? questionData.data : [];
+  const avg = stats?.averageRating != null ? Number(stats.averageRating).toFixed(1) : "—";
+
+  return (
+    <div className="space-y-4">
+      {loadingStats ? (
+        <p className="text-sm text-muted-foreground">Loading stats...</p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatBox label="Responses" value={stats?.totalResponses ?? 0} />
+          <StatBox label="Questions" value={stats?.totalQuestions ?? 0} />
+          <StatBox label="Average rating" value={avg === "—" ? avg : `${avg} / 5`} />
+        </div>
+      )}
+      <div className="surface-card overflow-hidden rounded-2xl border border-border/70">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/80 text-left text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-medium">Question</th>
+              <th className="px-4 py-3 font-medium">Type</th>
+              <th className="px-4 py-3 font-medium">Responses</th>
+              <th className="px-4 py-3 font-medium">Avg rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loadingQuestions && (
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading breakdown...</td></tr>
+            )}
+            {!loadingQuestions && questionStats.length === 0 && (
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No question stats yet.</td></tr>
+            )}
+            {questionStats.map((row: any) => (
+              <tr key={row._id} className="border-t border-border/60">
+                <td className="px-4 py-3">{row.question}</td>
+                <td className="px-4 py-3 capitalize">{typeLabel(row.type)}</td>
+                <td className="px-4 py-3">{row.totalResponses ?? 0}</td>
+                <td className="px-4 py-3">{row.avgRating != null ? Number(row.avgRating).toFixed(1) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function StatBox({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="surface-card rounded-2xl border border-border/70 p-5">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+    </div>
   );
 }
 

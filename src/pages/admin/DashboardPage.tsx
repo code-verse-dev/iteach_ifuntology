@@ -1,15 +1,19 @@
-import { BookOpen, GraduationCap, Users } from "lucide-react";
+import { Award, BookOpen, GraduationCap, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import AppPage, { PageHeader, StatCard } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
 import { useGetTeachersQuery } from "@/redux/services/apiSlices/teacherSlice";
 import { useGetCoursesQuery } from "@/redux/services/apiSlices/courseSlice";
+import { useGetCertificateStatsQuery } from "@/redux/services/apiSlices/certificateSlice";
 
 export default function AdminDashboard() {
-  const { data: teachersData } = useGetTeachersQuery();
+  const { data: teachersData } = useGetTeachersQuery({ page: 1, limit: 8 });
   const { data: coursesData } = useGetCoursesQuery();
+  const { data: certStats } = useGetCertificateStatsQuery();
   const teachers = teachersData?.data ?? [];
+  const teacherCount = teachersData?.meta?.totalDocs ?? teachers.length;
   const courses = coursesData?.data ?? [];
+  const certificateCount = certStats?.data?.total ?? 0;
 
   return (
     <AppPage>
@@ -23,10 +27,11 @@ export default function AdminDashboard() {
           </Button>
         }
       />
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Teachers" value={teachers.length} hint="Accounts you created" icon={Users} />
+      <div className="grid gap-4 sm:grid-cols-4">
+        <StatCard label="Teachers" value={teacherCount} hint="Accounts you created" icon={Users} />
         <StatCard label="Courses" value={courses.length} hint="Funtology family catalog" icon={BookOpen} />
-        <StatCard label="Published" value={courses.filter((c: any) => c.status === "published").length} hint="Ready for classrooms" icon={GraduationCap} />
+        <StatCard label="Published" value={courses.length} hint="Ready for classrooms" icon={GraduationCap} />
+        <StatCard label="Certificates" value={certificateCount} hint="Issued to students" icon={Award} />
       </div>
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
         <section className="surface-card rounded-2xl border border-border/70 p-6">

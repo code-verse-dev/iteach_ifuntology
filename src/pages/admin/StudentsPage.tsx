@@ -1,15 +1,31 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Eye } from "lucide-react";
 import AppPage, { PageHeader } from "@/components/layout/PageShell";
 import PersonDetailDialog from "@/components/people/PersonDetailDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useGetStudentsQuery } from "@/redux/services/apiSlices/studentSlice";
 
 export default function StudentsPage() {
-  const { data } = useGetStudentsQuery();
+  const [page, setPage] = useState(1);
+  const [keyword, setKeyword] = useState("");
+  const [search, setSearch] = useState("");
+  const { data, isFetching } = useGetStudentsQuery({ page, limit: 20, keyword });
   const students = data?.data ?? [];
+  const meta = data?.meta ?? { page: 1, totalPages: 1, totalDocs: 0 };
   const [selected, setSelected] = useState<any>(null);
+
+  const applySearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setKeyword(search.trim());
+  };
+
+  const pageLabel = useMemo(
+    () => `Page ${meta.page} of ${meta.totalPages || 1}`,
+    [meta.page, meta.totalPages],
+  );
 
   return (
     <AppPage>
@@ -18,6 +34,17 @@ export default function StudentsPage() {
         title="Students"
         description="Learners invited by teachers. Open a student to view contact details, enrolled courses, and surveys."
       />
+      <form className="mb-4 flex flex-wrap items-center gap-2" onSubmit={applySearch}>
+        <Input
+          className="max-w-sm"
+          placeholder="Search name or email"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button type="submit" variant="outline" disabled={isFetching}>
+          {isFetching ? "Searching..." : "Search"}
+        </Button>
+      </form>
       <div className="surface-card overflow-hidden rounded-2xl border border-border/70">
         <table className="w-full text-sm">
           <thead className="bg-secondary/80 text-left text-muted-foreground">
@@ -71,12 +98,28 @@ export default function StudentsPage() {
             {students.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                  No students have been invited yet.
+                  {isFetching ? "Loading students..." : "No students have been invited yet."}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+        <p>{meta.totalDocs} student{meta.totalDocs === 1 ? "" : "s"} · {pageLabel}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1 || isFetching} onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= (meta.totalPages || 1) || isFetching}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
       </div>
 
       <PersonDetailDialog person={selected} open={!!selected} onOpenChange={(open) => !open && setSelected(null)} />

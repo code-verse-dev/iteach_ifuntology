@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { useSelector } from "react-redux";
 import { UserRole } from "@/constants/roles";
 import { RootState } from "@/redux/store";
+import { clearAccessTokenCookie } from "@/utils/authSession";
 
 interface Props {
   children: ReactNode;
@@ -31,13 +32,13 @@ const ProtectedRoute: React.FC<Props> = ({ children, roles }) => {
   try {
     decoded = jwtDecode<JwtPayload>(token);
   } catch {
-    Cookies.remove("accessToken");
+    clearAccessTokenCookie();
     return <Navigate to="/login" replace />;
   }
 
   const currentTime = Date.now() / 1000;
   if (decoded.exp < currentTime) {
-    Cookies.remove("accessToken");
+    clearAccessTokenCookie();
     return <Navigate to="/login" replace />;
   }
 

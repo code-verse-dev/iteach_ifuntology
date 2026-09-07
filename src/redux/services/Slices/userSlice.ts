@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { clearAccessTokenCookie } from "@/utils/authSession";
 
 const initialState: any = {
   userData: {},
@@ -20,6 +21,7 @@ export const userSlice = createSlice({
     removeUser: (state) => {
       state.userData = {};
       state.userToken = null;
+      clearAccessTokenCookie();
       localStorage.clear();
     },
     addData: (state, { payload }) => {

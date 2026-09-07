@@ -9,6 +9,10 @@ import { teacherSlice } from "./services/apiSlices/teacherSlice";
 import { studentSlice } from "./services/apiSlices/studentSlice";
 import { notificationSlice } from "./services/apiSlices/notificationSlice";
 import { chatSlice } from "./services/apiSlices/chatSlice";
+import { quizSlice } from "./services/apiSlices/quizSlice";
+import { certificateSlice } from "./services/apiSlices/certificateSlice";
+import { vidLibrarySlice } from "./services/apiSlices/vidLibrarySlice";
+import { surveySlice } from "./services/apiSlices/surveySlice";
 
 const rootReducer = combineReducers({
   user: userReducer,
@@ -18,6 +22,10 @@ const rootReducer = combineReducers({
   [studentSlice.reducerPath]: studentSlice.reducer,
   [notificationSlice.reducerPath]: notificationSlice.reducer,
   [chatSlice.reducerPath]: chatSlice.reducer,
+  [quizSlice.reducerPath]: quizSlice.reducer,
+  [certificateSlice.reducerPath]: certificateSlice.reducer,
+  [vidLibrarySlice.reducerPath]: vidLibrarySlice.reducer,
+  [surveySlice.reducerPath]: surveySlice.reducer,
 });
 
 const persistConfig = {
@@ -30,6 +38,10 @@ const persistConfig = {
     studentSlice.reducerPath,
     notificationSlice.reducerPath,
     chatSlice.reducerPath,
+    quizSlice.reducerPath,
+    certificateSlice.reducerPath,
+    vidLibrarySlice.reducerPath,
+    surveySlice.reducerPath,
   ],
 };
 
@@ -44,7 +56,11 @@ export const store = configureStore({
       .concat(teacherSlice.middleware)
       .concat(studentSlice.middleware)
       .concat(notificationSlice.middleware)
-      .concat(chatSlice.middleware),
+      .concat(chatSlice.middleware)
+      .concat(quizSlice.middleware)
+      .concat(certificateSlice.middleware)
+      .concat(vidLibrarySlice.middleware)
+      .concat(surveySlice.middleware),
 });
 
 setupListeners(store.dispatch);
