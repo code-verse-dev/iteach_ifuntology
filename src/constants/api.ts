@@ -2,6 +2,7 @@ const { hostname } = window.location;
 
 const servers = {
   local: "http://localhost:3034",
+  customDev: "https://react.customdev.solutions:3034",
   live: "https://api.iteach-ifuntology.com",
 };
 
@@ -14,7 +15,9 @@ const viteApi = normalizeApiBase(import.meta.env.VITE_API_URL as string | undefi
 
 let URL = viteApi;
 if (!URL) {
-  if (
+  if (hostname.includes("react.customdev.solutions")) {
+    URL = servers.customDev;
+  } else if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
     hostname.includes("local")
