@@ -238,7 +238,7 @@ export default function TeachersPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Phone number *</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 000 0000" required />
+                  <Input value={form.phone} type="number" onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 000 0000" required />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Temporary password *</Label>
