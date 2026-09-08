@@ -91,14 +91,14 @@ export default function Topbar() {
                 <p className="text-xs font-normal text-muted-foreground">{user?.email}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate(`/${role}/my-profile`)}>
+              <DropdownMenuItem onClick={() => navigate(`/${role}/my-profile`)} className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" /> Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(ROLE_HOME[role])}>
+              <DropdownMenuItem onClick={() => navigate(ROLE_HOME[role])} className="cursor-pointer">
                 Dashboard
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setLogoutDialogOpen(true)}>
+              <DropdownMenuItem onClick={() => setLogoutDialogOpen(true)} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" /> Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
