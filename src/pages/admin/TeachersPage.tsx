@@ -128,7 +128,7 @@ export default function TeachersPage() {
       <PageHeader
         eyebrow="People"
         title="Teachers"
-        description="Admin-created accounts only. Assign lifetime courses and student seats, then update them later."
+        description="Admin-created accounts only. Assign courses and student seats, then update them later."
         actions={<Button onClick={() => setOpen(true)}>Create teacher</Button>}
       />
       <form className="mb-4 flex flex-wrap items-center gap-2" onSubmit={applySearch}>

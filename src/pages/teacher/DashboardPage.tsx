@@ -11,8 +11,8 @@ import { useGetMyAssignmentsQuery } from "@/redux/services/apiSlices/teacherSlic
 export default function TeacherDashboard() {
   const user = useSelector((state: RootState) => state.user.userData);
   const { data } = useGetMyStudentsQuery(user?._id, { skip: !user?._id });
-  const { data: assignmentData } = useGetMyAssignmentsQuery();
-  const { data: coursesData } = useGetCoursesQuery();
+  const { data: assignmentData } = useGetMyAssignmentsQuery({});
+  const { data: coursesData } = useGetCoursesQuery({});
   const students = data?.data ?? [];
   const courses = coursesData?.data ?? [];
   const assigned = (assignmentData?.data ?? []).map((assignment: any) => ({
@@ -27,7 +27,7 @@ export default function TeacherDashboard() {
       <PageHeader
         eyebrow="Teacher"
         title={`Hello, ${user?.firstName ?? "teacher"}`}
-        description="Your courses are lifetime gifts from the foundation. Invite students within your assigned seats."
+        description="Your courses are gifts from the foundation. Invite students within your assigned seats."
         actions={
           <Button asChild>
             <Link to="/teacher/my-students">Invite a student</Link>
@@ -35,7 +35,7 @@ export default function TeacherDashboard() {
         }
       />
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Assigned courses" value={assigned.length} icon={BookOpen} hint="Lifetime access" />
+        <StatCard label="Assigned courses" value={assigned.length} icon={BookOpen} hint="Course Access" />
         <StatCard label="Student seats" value={`${usedSeats} / ${seats || 0}`} icon={Users} hint="Used of assigned" />
         <StatCard label="Classroom" value={students.length} icon={Users} hint="Active learners" />
       </div>

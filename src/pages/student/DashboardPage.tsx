@@ -10,8 +10,8 @@ import { useGetMyCertificatesQuery } from "@/redux/services/apiSlices/certificat
 
 export default function StudentDashboard() {
   const user = useSelector((state: RootState) => state.user.userData);
-  const { data: enrollmentData } = useGetMyEnrollmentsQuery();
-  const { data: coursesData } = useGetCoursesQuery();
+  const { data: enrollmentData } = useGetMyEnrollmentsQuery({});
+  const { data: coursesData } = useGetCoursesQuery({});
   const { data: certificateData } = useGetMyCertificatesQuery();
   const certificates = certificateData?.data ?? [];
   const enrollments = enrollmentData?.data ?? [];
@@ -26,7 +26,7 @@ export default function StudentDashboard() {
       <PageHeader
         eyebrow="Student"
         title={`Welcome back, ${user?.firstName ?? "learner"}`}
-        description="Continue your lifetime pathway. No payments, no store — just courses, modules, and certificates."
+        description="Continue your pathway. Courses, modules, and certificates."
         actions={
           <Button asChild>
             <Link to="/student/learning">Go to learning</Link>
@@ -43,7 +43,7 @@ export default function StudentDashboard() {
           <>
             <p className="mt-2 text-sm text-muted-foreground">Open {firstTitle} to continue your modules and lessons.</p>
             <Button className="mt-4" asChild>
-              <Link to={`/student/learning/${encodeURIComponent(firstCourse)}`}>Open {firstTitle}</Link>
+              <Link to={`/student/learning/${encodeURIComponent(firstCourse as string)}`}>Open {firstTitle}</Link>
             </Button>
           </>
         ) : (

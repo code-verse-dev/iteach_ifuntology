@@ -39,6 +39,25 @@ export default function StudentProfilePage() {
           )}
         </div>
       </section>
+      <section className="mb-6 surface-card rounded-2xl border border-border/70 p-6">
+        <h2 className="text-lg font-semibold">Practical credit sheets</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {enrollments.map((enrollment: any) => (
+            <article key={`sheet-${enrollment._id ?? enrollment.courseType}`} className="rounded-xl border border-border/70 p-4">
+              <p className="font-medium">{enrollment.courseType}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Review and approve daily practical entries.</p>
+              <Button className="mt-3" size="sm" asChild>
+                <Link to={`/teacher/my-students/${studentId}/practical-sheet/${encodeURIComponent(enrollment.courseType)}`}>
+                  View practical sheet
+                </Link>
+              </Button>
+            </article>
+          ))}
+        </div>
+        {enrollments.length === 0 && (
+          <p className="mt-3 text-sm text-muted-foreground">No course enrollments to review.</p>
+        )}
+      </section>
       <section className="surface-card rounded-2xl border border-border/70 p-6">
         <h2 className="text-lg font-semibold">Certificates</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">

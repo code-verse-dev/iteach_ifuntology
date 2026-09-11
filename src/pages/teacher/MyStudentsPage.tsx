@@ -52,7 +52,7 @@ export default function MyStudentsPage() {
     ...(keyword ? { keyword } : {}),
     ...(courseType ? { courseType } : {}),
   });
-  const { data: assignmentData } = useGetMyAssignmentsQuery();
+  const { data: assignmentData } = useGetMyAssignmentsQuery({});
   const [invite, { isLoading }] = useInviteStudentMutation();
   const [removeStudent, { isLoading: deleting }] = useDeleteStudentMutation();
   const [resetPassword, { isLoading: resetting }] = useResetStudentPasswordMutation();
@@ -191,7 +191,7 @@ export default function MyStudentsPage() {
       />
       {assignments.length === 0 && (
         <p className="mb-4 text-sm text-muted-foreground">
-          No courses are assigned to you yet. Ask an admin to assign lifetime courses and seats before inviting students.
+          No courses are assigned to you yet. Ask an admin to assign courses and seats before inviting students.
         </p>
       )}
       <form className="mb-4 flex flex-wrap items-center gap-2" onSubmit={applySearch}>

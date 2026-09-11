@@ -117,7 +117,18 @@ export default function ModuleDetailPage() {
               </Link>
               <div className="flex items-center gap-2">
                 <Badge>{lesson.type}</Badge>
-                <Button variant="outline" size="sm" onClick={() => setEditOpen({ ...lesson, file: undefined })}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditOpen({
+                    ...lesson,
+                    file: undefined,
+                    allowPdfPreview: lesson.allowPdfPreview !== false,
+                    allowPdfDownload: lesson.allowPdfDownload !== false,
+                  })}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(lesson)}><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
@@ -236,8 +247,8 @@ export default function ModuleDetailPage() {
                     order: editOpen.order,
                     file: String(editOpen.type).toUpperCase() === "PDF" ? editOpen.file : undefined,
                     video: String(editOpen.type).toUpperCase() === "VIDEO" ? editOpen.file : undefined,
-                    allowPdfPreview: editOpen.allowPdfPreview,
-                    allowPdfDownload: editOpen.allowPdfDownload,
+                    allowPdfPreview: String(editOpen.type).toUpperCase() === "PDF" ? Boolean(editOpen.allowPdfPreview) : undefined,
+                    allowPdfDownload: String(editOpen.type).toUpperCase() === "PDF" ? Boolean(editOpen.allowPdfDownload) : undefined,
                   }).unwrap();
                   if (res?.status) {
                     toast.success(res?.message || "Lesson updated");
@@ -264,6 +275,24 @@ export default function ModuleDetailPage() {
                     accept={String(editOpen.type).toUpperCase() === "VIDEO" ? "video/*" : "application/pdf"}
                     onChange={(e) => setEditOpen({ ...editOpen, file: e.target.files?.[0] })}
                   />
+                </div>
+              )}
+              {String(editOpen.type).toUpperCase() === "PDF" && (
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={editOpen.allowPdfPreview !== false}
+                      onCheckedChange={(checked) => setEditOpen({ ...editOpen, allowPdfPreview: Boolean(checked) })}
+                    />
+                    Allow preview
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={editOpen.allowPdfDownload !== false}
+                      onCheckedChange={(checked) => setEditOpen({ ...editOpen, allowPdfDownload: Boolean(checked) })}
+                    />
+                    Allow download
+                  </label>
                 </div>
               )}
               <DialogFooter><Button type="submit" disabled={updatingLesson}>{updatingLesson ? "Saving..." : "Save"}</Button></DialogFooter>

@@ -6,7 +6,7 @@ import { useGetCoursesQuery } from "@/redux/services/apiSlices/courseSlice";
 import { courseRouteKey } from "@/utils/mediaUrl";
 
 export default function LmsManagementPage() {
-  const { data, isFetching } = useGetCoursesQuery();
+  const { data, isFetching } = useGetCoursesQuery({});
   const courses = data?.data ?? [];
 
   return (
@@ -14,7 +14,7 @@ export default function LmsManagementPage() {
       <PageHeader
         eyebrow="Authoring"
         title="LMS management"
-        description="Catalog of foundation courses. Teachers receive these as lifetime assignments instead of paid subscriptions."
+        description="Catalog of foundation courses. Teachers receive these as assignments."
       />
       <div className="grid gap-4 md:grid-cols-2">
         {courses.map((course: any) => {

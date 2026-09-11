@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { setAccessTokenCookie } from "@/utils/authSession";
 
 const features = [
-  { label: "Lifetime course access", icon: BookOpen },
+  { label: "course access", icon: BookOpen },
   { label: "Teacher-led classrooms", icon: GraduationCap },
   { label: "Student invitations & seats", icon: Users },
   { label: "Nonprofit career literacy", icon: HeartHandshake },
@@ -73,7 +73,7 @@ export default function LoginPage() {
               Welcome to <span className="text-gradient-brand">iTeach iFuntology</span>
             </h1>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-              A quieter classroom for teachers and students. Courses, modules, certificates, and chat — without shops, subscriptions, or signups.
+              A quieter classroom for teachers and students. Courses, modules, certificates, and chat.
             </p>
           </div>
 

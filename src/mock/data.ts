@@ -197,11 +197,11 @@ export const modules: Module[] = [
     _id: "m-fun-1",
     courseId: "c-fun",
     title: "Welcome to Funtology",
-    description: "Orientation to the lifetime Funtology pathway.",
+    description: "Orientation to the Funtology pathway.",
     duration: "35 min",
     order: 1,
     lessons: [
-      { _id: "l-1", title: "Program overview", type: "pdf", duration: "12 min", summary: "How the lifetime LMS pathway is structured." },
+      { _id: "l-1", title: "Program overview", type: "pdf", duration: "12 min", summary: "How the LMS pathway is structured." },
       { _id: "l-2", title: "Classroom expectations", type: "quiz", duration: "8 min", summary: "Community guidelines and learning habits." },
       { _id: "l-3", title: "Tools of the trade", type: "video", duration: "15 min", summary: "A walkthrough of materials used in later modules." },
     ],
@@ -444,7 +444,7 @@ export const certificates: Certificate[] = [
 
 export const quizQuestions = [
   { id: "qq-1", prompt: "What is the goal of iTeach iFuntology?", options: ["Sell products", "Support nonprofit career literacy", "Book Zoom classes", "Run an online shop"], answer: 1 },
-  { id: "qq-2", prompt: "Who assigns lifetime course seats?", options: ["The student", "The teacher", "The admin", "The store"], answer: 2 },
+  { id: "qq-2", prompt: "Who assigns course seats?", options: ["The student", "The teacher", "The admin", "The store"], answer: 2 },
   { id: "qq-3", prompt: "How do students join a classroom?", options: ["Public signup", "Teacher invitation", "Affiliate link", "Purchase order"], answer: 1 },
 ];
 
@@ -461,7 +461,7 @@ export const quizBank: QuizQuestionItem[] = [
   {
     _id: "qb-2",
     quizId: "q-1",
-    question: "Who assigns lifetime course seats?",
+    question: "Who assigns course seats?",
     type: "multiple_choice",
     options: ["The student", "The teacher", "The admin", "The store"],
     correctAnswer: "The admin",
