@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Library,
   ListChecks,
+  ClipboardList,
   MessagesSquare,
   UserCog,
   Users,
@@ -85,6 +86,7 @@ const navByRole: Record<UserRole, { label: string; items: Item[] }[]> = {
       items: [
         { title: "My Courses", url: "/teacher/my-courses", icon: BookOpen },
         { title: "My Students", url: "/teacher/my-students", icon: Users },
+        { title: "Practical Sheets", url: "/teacher/practical-sheets", icon: ClipboardList },
         { title: "Video Library", url: "/teacher/video-library", icon: Video },
         { title: "Surveys", url: "/teacher/surveys", icon: FileText },
       ],

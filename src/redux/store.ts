@@ -13,6 +13,7 @@ import { quizSlice } from "./services/apiSlices/quizSlice";
 import { certificateSlice } from "./services/apiSlices/certificateSlice";
 import { vidLibrarySlice } from "./services/apiSlices/vidLibrarySlice";
 import { surveySlice } from "./services/apiSlices/surveySlice";
+import { practicalSheetSlice } from "./services/apiSlices/practicalSheetSlice";
 
 const rootReducer = combineReducers({
   user: userReducer,
@@ -26,6 +27,7 @@ const rootReducer = combineReducers({
   [certificateSlice.reducerPath]: certificateSlice.reducer,
   [vidLibrarySlice.reducerPath]: vidLibrarySlice.reducer,
   [surveySlice.reducerPath]: surveySlice.reducer,
+  [practicalSheetSlice.reducerPath]: practicalSheetSlice.reducer,
 });
 
 const persistConfig = {
@@ -42,6 +44,7 @@ const persistConfig = {
     certificateSlice.reducerPath,
     vidLibrarySlice.reducerPath,
     surveySlice.reducerPath,
+    practicalSheetSlice.reducerPath,
   ],
 };
 
@@ -60,7 +63,8 @@ export const store = configureStore({
       .concat(quizSlice.middleware)
       .concat(certificateSlice.middleware)
       .concat(vidLibrarySlice.middleware)
-      .concat(surveySlice.middleware),
+      .concat(surveySlice.middleware)
+      .concat(practicalSheetSlice.middleware),
 });
 
 setupListeners(store.dispatch);

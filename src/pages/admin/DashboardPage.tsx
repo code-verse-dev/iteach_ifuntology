@@ -8,7 +8,7 @@ import { useGetCertificateStatsQuery } from "@/redux/services/apiSlices/certific
 
 export default function AdminDashboard() {
   const { data: teachersData } = useGetTeachersQuery({ page: 1, limit: 8 });
-  const { data: coursesData } = useGetCoursesQuery();
+  const { data: coursesData } = useGetCoursesQuery({});
   const { data: certStats } = useGetCertificateStatsQuery();
   const teachers = teachersData?.data ?? [];
   const teacherCount = teachersData?.meta?.totalDocs ?? teachers.length;
@@ -20,7 +20,7 @@ export default function AdminDashboard() {
       <PageHeader
         eyebrow="Admin"
         title="Foundation overview"
-        description="Create teachers, assign lifetime courses and student seats, and author LMS materials."
+        description="Create teachers, assign courses and student seats, and author LMS materials."
         actions={
           <Button asChild>
             <Link to="/admin/teachers">Manage teachers</Link>
@@ -52,7 +52,7 @@ export default function AdminDashboard() {
           <h2 className="text-lg font-semibold">What you can do</h2>
           <div className="mt-4 grid gap-3">
             {[
-              ["Assign seats", "Give each teacher lifetime access and a student cap."],
+              ["Assign seats", "Give each teacher access and a student cap."],
               ["Author materials", "Courses, modules, lessons, quizzes, and videos."],
               ["Support classrooms", "Chat, notifications, and profile tools for every role."],
             ].map(([title, body]) => (

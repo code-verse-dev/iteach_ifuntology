@@ -18,7 +18,7 @@ export default function AssignCoursesPage() {
     isFetching: loadingTeacher,
     isError,
   } = useGetTeacherQuery(teacherId as string, { skip: !teacherId });
-  const { data: coursesData, isFetching: loadingCourses } = useGetAssignableCoursesQuery();
+  const { data: coursesData, isFetching: loadingCourses } = useGetAssignableCoursesQuery({});
   const [assign, { isLoading }] = useAssignTeacherCoursesMutation();
   const teacher = teacherData?.data;
   const courses = coursesData?.data ?? [];
@@ -53,7 +53,7 @@ export default function AssignCoursesPage() {
         assignments,
       }).unwrap();
       if (res?.status) {
-        toast.success("Lifetime assignments saved");
+        toast.success("Assignments saved");
       } else {
         toast.error(res?.message || "Could not save assignments");
       }
@@ -78,7 +78,7 @@ export default function AssignCoursesPage() {
       <PageHeader
         eyebrow="Teachers"
         title={`${teacher?.firstName ?? ""} ${teacher?.lastName ?? ""}`.trim() || "Assign courses"}
-        description="Assign Funtology family courses for lifetime access and set how many students this teacher may invite."
+        description="Assign courses and set how many students this teacher may invite."
         actions={
           <Button variant="outline" asChild>
             <Link to="/admin/teachers">Back</Link>

@@ -45,6 +45,10 @@ import SurveyResponseViewPage from "./pages/shared/SurveyResponseViewPage";
 import ProfilePage from "./pages/shared/ProfilePage";
 import NotificationsPage from "./pages/shared/NotificationsPage";
 import MessagesPage from "./pages/shared/MessagesPage";
+import PracticalSheetPage from "./pages/student/PracticalSheetPage";
+import PracticalSheetsPage from "./pages/teacher/PracticalSheetsPage";
+import PracticalSheetEntryDetailsPage from "./pages/teacher/PracticalSheetEntryDetailsPage";
+import StudentPracticalSheetView from "./pages/teacher/StudentPracticalSheetView";
 
 const App = () => {
   return (
@@ -94,8 +98,11 @@ const App = () => {
             <Route path="/teacher/my-courses/:courseId/exams/pdf/:lessonId" element={<ProtectedRoute roles={["teacher"]}><LessonPdfPage mode="wide" /></ProtectedRoute>} />
             <Route path="/teacher/my-courses/:courseId/exams/pdf/:lessonId/fullscreen" element={<ProtectedRoute roles={["teacher"]}><LessonPdfPage mode="fullscreen" /></ProtectedRoute>} />
             <Route path="/teacher/my-courses/:courseId/assessment/:lessonId" element={<ProtectedRoute roles={["teacher"]}><AssessmentPreviewPage /></ProtectedRoute>} />
+            <Route path="/teacher/practical-sheets" element={<ProtectedRoute roles={["teacher"]}><PracticalSheetsPage /></ProtectedRoute>} />
+            <Route path="/teacher/practical-sheets/:studentId/:courseType/:entryDate" element={<ProtectedRoute roles={["teacher"]}><PracticalSheetEntryDetailsPage /></ProtectedRoute>} />
             <Route path="/teacher/my-students" element={<ProtectedRoute roles={["teacher"]}><MyStudentsPage /></ProtectedRoute>} />
             <Route path="/teacher/my-students/:studentId" element={<ProtectedRoute roles={["teacher"]}><StudentProfilePage /></ProtectedRoute>} />
+            <Route path="/teacher/my-students/:studentId/practical-sheet/:courseType" element={<ProtectedRoute roles={["teacher"]}><StudentPracticalSheetView /></ProtectedRoute>} />
             <Route path="/teacher/certificates/:certificateId" element={<ProtectedRoute roles={["teacher"]}><CertificateViewPage /></ProtectedRoute>} />
             <Route path="/teacher/video-library" element={<ProtectedRoute roles={["teacher"]}><VideoLibraryPage /></ProtectedRoute>} />
             <Route path="/teacher/surveys" element={<ProtectedRoute roles={["teacher"]}><SurveysPage /></ProtectedRoute>} />
@@ -108,6 +115,7 @@ const App = () => {
             <Route path="/student/dashboard" element={<ProtectedRoute roles={["student"]}><StudentDashboard /></ProtectedRoute>} />
             <Route path="/student/learning" element={<ProtectedRoute roles={["student"]}><MyCoursesPage /></ProtectedRoute>} />
             <Route path="/student/learning/:courseId" element={<ProtectedRoute roles={["student"]}><CourseDetailsPage /></ProtectedRoute>} />
+            <Route path="/student/learning/:courseId/practical-sheet" element={<ProtectedRoute roles={["student"]}><PracticalSheetPage /></ProtectedRoute>} />
             <Route path="/student/learning/:courseId/career-explorer-pathway" element={<ProtectedRoute roles={["student"]}><CareerExplorerPathwayPage /></ProtectedRoute>} />
             <Route path="/student/learning/:courseId/lesson/:moduleId/:lessonId" element={<ProtectedRoute roles={["student"]}><LearnerLessonPage /></ProtectedRoute>} />
             <Route path="/student/learning/:courseId/lesson/:moduleId/:lessonId/pdf" element={<ProtectedRoute roles={["student"]}><LessonPdfPage mode="wide" /></ProtectedRoute>} />

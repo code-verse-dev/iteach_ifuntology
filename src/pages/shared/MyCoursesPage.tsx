@@ -12,7 +12,7 @@ import { courseRouteKey } from "@/utils/mediaUrl";
 export default function MyCoursesPage() {
   const user = useSelector((state: RootState) => state.user.userData);
   const role = user?.role as string;
-  const { data: coursesData, isFetching } = useGetCoursesQuery();
+  const { data: coursesData, isFetching } = useGetCoursesQuery({});
   const { data: assignmentData } = useGetMyAssignmentsQuery(undefined, { skip: role !== "teacher" });
   const { data: enrollmentData } = useGetMyEnrollmentsQuery(undefined, { skip: role !== "student" });
   const courses = coursesData?.data ?? [];
@@ -45,7 +45,6 @@ export default function MyCoursesPage() {
             <Link key={course._id} to={`${base}/${encodeURIComponent(key)}`} className="surface-card rounded-2xl border border-border/70 p-6 hover:border-primary/40">
               <div className="flex items-start justify-between">
                 <h2 className="text-xl font-semibold">{course.title}</h2>
-                <Badge>Lifetime</Badge>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">{course.description}</p>
               <p className="mt-4 text-sm text-muted-foreground">{course.modules} modules · {course.lessons} lessons</p>
@@ -58,7 +57,7 @@ export default function MyCoursesPage() {
           {isFetching
             ? "Loading courses..."
             : role === "teacher"
-              ? "No courses assigned yet. Ask an admin to assign lifetime courses."
+              ? "No courses assigned yet. Ask an admin to assign courses."
               : "No courses enrolled yet. Ask your teacher to invite you."}
         </p>
       )}

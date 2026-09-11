@@ -126,6 +126,12 @@ export default function CourseDetailsPage() {
               <Compass className="h-4 w-4" />
               Career Explorer Pathway
             </Button>
+            {role === "student" && (
+              <Button variant="brand" onClick={() => navigate(`/student/learning/${encodeURIComponent(courseKey)}/practical-sheet`)}>
+                <ClipboardList className="h-4 w-4" />
+                Fill Practical Sheet
+              </Button>
+            )}
             <Button variant="brand" asChild>
               <a href={WORKFORCE_EXPLORATION_FORM_PDF} target="_blank" rel="noopener noreferrer">
                 <Download className="h-4 w-4" />
