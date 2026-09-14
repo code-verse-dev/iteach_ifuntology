@@ -189,7 +189,7 @@ export default function QuizDetailPage() {
             setForm={setQForm}
             onSubmit={async () => {
               const options = qForm.type === "true_false" ? ["true", "false"] : qForm.type === "short_answer" ? [] : qForm.options.filter(Boolean);
-              const correctAnswer = qForm.type === "true_false" ? qForm.correctAnswer === "true" || qForm.correctAnswer === true : qForm.correctAnswer;
+              const correctAnswer = qForm.type === "true_false" ? qForm.correctAnswer === "true" : qForm.correctAnswer;
               try {
                 const res: any = await createQuestions({
                   lesson: quizId as string,

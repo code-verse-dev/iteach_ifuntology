@@ -15,7 +15,7 @@ export default function QuizManagementPage() {
   const [page, setPage] = useState(1);
   const courseType = params.get("course") ?? params.get("courseType") ?? "";
   const type = params.get("type") ?? "";
-  const { data: coursesData } = useGetCoursesQuery();
+  const { data: coursesData } = useGetCoursesQuery({});
   const catalog = coursesData?.data ?? [];
   const { data, isFetching } = useGetAdminQuizzesQuery({
     page,

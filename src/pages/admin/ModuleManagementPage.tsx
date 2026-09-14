@@ -39,7 +39,7 @@ function apiError(err: any, fallback: string) {
 
 export default function ModuleManagementPage() {
   const [params, setParams] = useSearchParams();
-  const { data: coursesData } = useGetCoursesQuery();
+  const { data: coursesData } = useGetCoursesQuery({});
   const catalog = coursesData?.data ?? [];
   const courseFilter = params.get("course") ?? catalog[0]?.courseType ?? "";
   const [page, setPage] = useState(1);

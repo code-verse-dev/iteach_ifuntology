@@ -336,7 +336,7 @@ export default function ModuleDetailPage() {
             onSubmit={async (e) => {
               e.preventDefault();
               try {
-                const res: any = await updateModule({ id: moduleId as string, ...moduleForm }).unwrap();
+                const res: any = await updateModule({ id: moduleId as string, ...moduleForm as any }).unwrap();
                 if (res?.status) {
                   toast.success(res?.message || "Module updated");
                   setEditModuleOpen(false);
