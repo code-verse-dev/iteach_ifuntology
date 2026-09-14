@@ -139,7 +139,7 @@ export default function VideoLibraryPage() {
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data: coursesData } = useGetCoursesQuery();
+  const { data: coursesData } = useGetCoursesQuery({});
   const catalog = coursesData?.data ?? [];
   const { data: typesData, isFetching: loadingTypes } = useGetAccessibleCourseTypesQuery();
   const accessibleTypes: string[] = typesData?.data ?? [];

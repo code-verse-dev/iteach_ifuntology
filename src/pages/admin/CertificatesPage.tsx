@@ -17,7 +17,7 @@ export default function AdminCertificatesPage() {
   const [search, setSearch] = useState(params.get("keyword") ?? "");
   const [page, setPage] = useState(1);
   const courseType = params.get("course") ?? "";
-  const { data: coursesData } = useGetCoursesQuery();
+  const { data: coursesData } = useGetCoursesQuery({});
   const catalog = coursesData?.data ?? [];
   const { data, isFetching } = useGetAdminCertificatesQuery({
     page,
